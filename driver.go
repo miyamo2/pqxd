@@ -187,9 +187,17 @@ func dynamoDBOptionsFromParams(connParam connectionParam) dynamodb.Options {
 
 	endpoint := connParam.lookup(connectionStringEndpoint)
 
+	var disableHttps bool
+	if endpoint != nil {
+		disableHttps = strings.HasPrefix(*endpoint, "http://")
+	}
+
 	return dynamodb.Options{
 		Region:       region,
 		Credentials:  creds,
 		BaseEndpoint: endpoint,
+		EndpointOptions: dynamodb.EndpointResolverOptions{
+			DisableHTTPS: disableHttps,
+		},
 	}
 }

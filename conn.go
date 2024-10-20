@@ -3,7 +3,6 @@ package pqxd
 import (
 	"context"
 	"database/sql/driver"
-	"errors"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -25,9 +24,6 @@ var (
 	_ driver.Pinger             = (*connection)(nil)
 )
 
-// ErrClosedConnection indicates the dynamodb connection is closed
-var ErrClosedConnection = errors.New("connection is closed")
-
 // connection is an implementation of driver.Conn
 type connection struct {
 	// client DynamoDB Client
@@ -46,7 +42,7 @@ type connection struct {
 // Ping See: driver.Pinger
 func (c *connection) Ping(ctx context.Context) error {
 	if c.closed.Load() {
-		return ErrClosedConnection
+		return driver.ErrBadConn
 	}
 	_, err := c.client.DescribeEndpoints(ctx, nil)
 	return err
@@ -59,8 +55,29 @@ func (c *connection) Prepare(query string) (driver.Stmt, error) {
 
 // PrepareContext See: driver.ConnPrepareContext
 func (c *connection) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
-	//TODO implement me
-	panic("implement me")
+	if c.closed.Load() {
+		return nil, driver.ErrBadConn
+	}
+	match := reSELECT.FindStringSubmatch(query)
+	if len(match) == 0 {
+		return nil, nil
+	}
+	selectedList := extractSelectedListFromMatchString(match)
+
+	stmt := newStatement(query, selectedList, numWhereParams(match), c.newFetchClosure,
+		func() error {
+			if c.closed.Load() {
+				return driver.ErrBadConn
+			}
+			return nil
+		})
+	select {
+	default:
+	case <-ctx.Done():
+		stmt.Close()
+		return nil, ctx.Err()
+	}
+	return stmt, nil
 }
 
 // Close See: driver.Conn
@@ -97,7 +114,7 @@ func (c *connection) ExecContext(ctx context.Context, query string, args []drive
 // QueryContext See: driver.QueryerContext
 func (c *connection) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	if c.closed.Load() {
-		return nil, ErrClosedConnection
+		return nil, driver.ErrBadConn
 	}
 	match := reSELECT.FindStringSubmatch(query)
 	if len(match) == 0 {
@@ -148,10 +165,12 @@ const (
 	reStrSelectedList              = `(?P<` + namedCaptureKeySelectedList + `>(\*|[a-z0-9_\-\.]{1,255}(,\s*[a-z0-9_\-\.]{1,255})*))`
 	namedCaptureKeySELECTTableName = "table_name"
 	reStrSELECTTableName           = `(?P<` + namedCaptureKeySELECTTableName + `>("[a-z0-9_\-\.]{3,255}"(\."[a-z0-9_\-\.]{3,255}")?))`
+	namedCaptureKeyWHERE           = "where"
+	reStrWHERE                     = `(?P<` + namedCaptureKeyWHERE + `>(.+\?)*)`
 )
 
 var (
-	reSELECT = regexp.MustCompile(`(?i)(?:SELECT)\s+` + reStrSelectedList + `\s+(?:FROM)\s+` + reStrSELECTTableName)
+	reSELECT = regexp.MustCompile(`(?i)(?:SELECT)\s+` + reStrSelectedList + `\s+(?:FROM)\s+` + reStrSELECTTableName + `(\s+(?:WHERE)\s+` + reStrWHERE + `)?`)
 )
 
 // extractSelectedListFromMatchString extracts selected list from the match string
@@ -173,6 +192,12 @@ func extractTableNameFromMatchString(match []string) string {
 	return strings.TrimSpace(trimmedWQuot)
 }
 
+// numWhereParams returns where parameters counts
+func numWhereParams(match []string) int {
+	whereParams := match[reSELECT.SubexpIndex(namedCaptureKeyWHERE)]
+	return strings.Count(whereParams, "?")
+}
+
 // fetchResult
 type fetchResult struct {
 	out       []map[string]types.AttributeValue
@@ -183,7 +208,7 @@ type fetchResult struct {
 func (c *connection) newFetchClosure(input dynamodb.ExecuteStatementInput) fetchClosure {
 	return func(ctx context.Context, nextToken *string, dest *[]map[string]types.AttributeValue) (*string, error) {
 		if c.closed.Load() {
-			return nil, ErrClosedConnection
+			return nil, driver.ErrBadConn
 		}
 		resultCh := make(chan fetchResult, 1)
 		errCh := make(chan error, 1)
@@ -193,6 +218,7 @@ func (c *connection) newFetchClosure(input dynamodb.ExecuteStatementInput) fetch
 				errCh <- err
 				close(errCh)
 				close(resultCh)
+				return
 			}
 			resultCh <- fetchResult{
 				out:       output.Items,
@@ -214,6 +240,15 @@ func (c *connection) newFetchClosure(input dynamodb.ExecuteStatementInput) fetch
 			}
 		}
 	}
+}
+
+// toNamedValue converts []driver.Value to []driver.NamedValue
+func toNamedValue(args []driver.Value) []driver.NamedValue {
+	namedValues := make([]driver.NamedValue, 0, len(args))
+	for i, arg := range args {
+		namedValues = append(namedValues, driver.NamedValue{Ordinal: i + 1, Value: arg})
+	}
+	return namedValues
 }
 
 // toPartiQLParameters converts []driver.NamedValue to []types.AttributeValue

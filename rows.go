@@ -13,15 +13,15 @@ import (
 
 // compatibility check
 var (
-	_ driver.Rows              = (*rows)(nil)
-	_ driver.RowsNextResultSet = (*rows)(nil)
+	_ driver.Rows              = (*pqxdRows)(nil)
+	_ driver.RowsNextResultSet = (*pqxdRows)(nil)
 )
 
 // fetchClosure fetches the next result set.
 type fetchClosure func(ctx context.Context, nextToken *string, dest *[]map[string]types.AttributeValue) (*string, error)
 
-// rows is an implementation of driver.Rows
-type rows struct {
+// pqxdRows is an implementation of driver.Rows
+type pqxdRows struct {
 	// columnNames is the list of column names.
 	columnNames []string
 
@@ -42,7 +42,7 @@ type rows struct {
 }
 
 // Next See: driver.Rows
-func (r *rows) Next(dest []driver.Value) error {
+func (r *pqxdRows) Next(dest []driver.Value) error {
 	out := *r.out.Load()
 	cursor := int(r.outCursor.Load())
 	if len(out)-1 < cursor {
@@ -75,12 +75,12 @@ func (r *rows) Next(dest []driver.Value) error {
 }
 
 // HasNextResultSet See: driver.RowsNextResultSet
-func (r *rows) HasNextResultSet() bool {
+func (r *pqxdRows) HasNextResultSet() bool {
 	return r.nextToken.Load() != nil
 }
 
 // NextResultSet See: driver.RowsNextResultSet
-func (r *rows) NextResultSet() error {
+func (r *pqxdRows) NextResultSet() error {
 	out := *r.out.Load()
 	cursor := r.outCursor.Load()
 	if len(out) != 0 && len(out)-1 != int(cursor) {
@@ -109,12 +109,12 @@ func (r *rows) NextResultSet() error {
 }
 
 // Columns See: driver.Rows
-func (r *rows) Columns() []string {
+func (r *pqxdRows) Columns() []string {
 	return r.columnNames
 }
 
 // Close See: driver.Rows
-func (r *rows) Close() (err error) {
+func (r *pqxdRows) Close() (err error) {
 	fcp := r.fetchCancel.Load()
 	defer r.fetchCancel.Store(nil)
 	if fcp == nil {
@@ -128,12 +128,12 @@ func (r *rows) Close() (err error) {
 	return
 }
 
-// newRows returns a new rows
-func newRows(columnNames []string, nextToken *string, fetch fetchClosure, out []map[string]types.AttributeValue) *rows {
+// newRows returns a new pqxdRows
+func newRows(columnNames []string, nextToken *string, fetch fetchClosure, out []map[string]types.AttributeValue) *pqxdRows {
 	if len(columnNames) == 1 && columnNames[0] == "*" {
 		columnNames = nil
 	}
-	return &rows{
+	return &pqxdRows{
 		columnNames: columnNames,
 		nextToken:   *atomic.NewPointer(nextToken),
 		fetch:       fetch,
