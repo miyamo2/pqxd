@@ -1,0 +1,57 @@
+{
+  "TableName": "test_tables",
+  "KeySchema": [
+    {
+      "AttributeName": "pk",
+      "KeyType": "HASH"
+    },
+    {
+      "AttributeName": "sk",
+      "KeyType": "RANGE"
+    }
+  ],
+  "AttributeDefinitions": [
+    {
+      "AttributeName": "pk",
+      "AttributeType": "S"
+    },
+    {
+      "AttributeName": "sk",
+      "AttributeType": "N"
+    },
+    {
+      "AttributeName": "gsi_pk",
+      "AttributeType": "S"
+    },
+    {
+      "AttributeName": "gsi_sk",
+      "AttributeType": "S"
+    }
+  ],
+  "ProvisionedThroughput": {
+    "ReadCapacityUnits": 1,
+    "WriteCapacityUnits": 1
+  },
+  "GlobalSecondaryIndexes": [
+    {
+      "IndexName": "gsi_pk-gsi_sk-index",
+      "KeySchema": [
+        {
+          "AttributeName": "gsi_pk",
+          "KeyType": "HASH"
+        },
+        {
+          "AttributeName": "gsi_sk",
+          "KeyType": "RANGE"
+        }
+      ],
+      "Projection": {
+        "ProjectionType": "ALL"
+      },
+      "ProvisionedThroughput": {
+        "ReadCapacityUnits": 1,
+        "WriteCapacityUnits": 1
+      }
+    }
+  ]
+}
