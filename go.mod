@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.41
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.15.12
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.36.2
-	github.com/aws/smithy-go v1.22.0
+	github.com/google/go-cmp v0.6.0
 	github.com/joho/godotenv v1.5.1
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.5.0
@@ -26,6 +26,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.24.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.32.2 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/aws/smithy-go v1.22.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 )

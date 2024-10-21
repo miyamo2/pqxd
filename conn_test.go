@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-func Test_Ping(t *testing.T) {
+func Test_Connection_Ping(t *testing.T) {
 	type test struct {
 		ctx            context.Context
 		dynamoDBClient func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient
@@ -64,7 +64,7 @@ func Test_Ping(t *testing.T) {
 				client.EXPECT().DescribeEndpoints(gomock.Any(), gomock.Any()).Times(0)
 				return client
 			},
-			want: ErrClosedConnection,
+			want: driver.ErrBadConn,
 		},
 	}
 
@@ -83,7 +83,7 @@ func Test_Ping(t *testing.T) {
 	}
 }
 
-func Test_Close(t *testing.T) {
+func Test_Connection_Close(t *testing.T) {
 	type test struct {
 		ctx            context.Context
 		tx             func() transaction
@@ -168,7 +168,7 @@ func Test_Close(t *testing.T) {
 	}
 }
 
-func Test_QueryContext(t *testing.T) {
+func Test_pqxdRows_QueryContext(t *testing.T) {
 	type want struct {
 		resultSets [][]map[string]types.AttributeValue
 		err        error
@@ -417,7 +417,7 @@ func Test_QueryContext(t *testing.T) {
 				},
 			},
 			want: want{
-				err: ErrClosedConnection,
+				err: driver.ErrBadConn,
 			},
 		},
 	}
@@ -441,17 +441,13 @@ func Test_QueryContext(t *testing.T) {
 			if !errors.Is(err, tt.want.err) {
 				t.Errorf("QueryContext().error %+v, want %+v", err, tt.want.err)
 			}
-			var resultSets [][]map[string]types.AttributeValue
-			switch got := (any)(got).(type) {
-			case *rows:
-				for got.NextResultSet() == nil {
-					resultSet := *got.out.Load()
-					resultSets = append(resultSets, resultSet)
-					got.outCursor.Store(uint32(len(resultSet) - 1))
-				}
-				if diff := cmp.Diff(tt.want.resultSets, resultSets, CmpAttributeValuesOpt...); diff != "" {
-					t.Errorf("QueryContext().out mismatch (-want +got):\n%s", diff)
-				}
+			results, err := GetAllResultSet(t, got)
+			if err != nil {
+				t.Fatalf("failed to scan results: %v", err)
+				return
+			}
+			if diff := cmp.Diff(tt.want.resultSets, results, CmpAttributeValuesOpt...); diff != "" {
+				t.Errorf("QueryContext().out mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

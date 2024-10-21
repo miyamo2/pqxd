@@ -8,6 +8,7 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go-v2 v1.32.2
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.41
+	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.15.12
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.36.2
 	github.com/joho/godotenv v1.5.1
 	github.com/miyamo2/pqxd v0.0.0-00010101000000-000000000000
@@ -15,7 +16,6 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.15.12 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.21 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.21 // indirect
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.24.2 // indirect

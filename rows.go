@@ -65,8 +65,7 @@ func (r *pqxdRows) Next(dest []driver.Value) error {
 			dest[i] = nil
 			continue
 		}
-		err := attributevalue.Unmarshal(colVal, &value)
-		if err != nil {
+		if err := attributevalue.Unmarshal(colVal, &value); err != nil {
 			return err
 		}
 		dest[i] = value

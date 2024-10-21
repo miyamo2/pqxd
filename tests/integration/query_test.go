@@ -152,13 +152,6 @@ func (s *QueryTestSuite) TearDownSubTest() {
 }
 
 func (s *QueryTestSuite) Test_QueryContext() {
-	type result struct {
-		PK    string
-		SK    float64
-		GSIPK string
-		GSISK string
-	}
-
 	s.Run("full-scan", func() {
 		db := GetDB(s.T())
 		rows, err := db.QueryContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables"`)
@@ -166,7 +159,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 			return
 		}
 
-		expect := []result{
+		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
 				SK:    1.0,
@@ -225,7 +218,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 		if !s.NoError(err) {
 			return
 		}
-		expect := []result{
+		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
 				SK:    1.0,
@@ -284,7 +277,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 		if !s.NoError(err) {
 			return
 		}
-		expect := []result{
+		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
 				SK:    3,
@@ -319,7 +312,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 		if !s.NoError(err) {
 			return
 		}
-		expect := []result{
+		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
 				SK:    3,
@@ -354,7 +347,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 		if !s.NoError(err) {
 			return
 		}
-		expect := []result{
+		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
 				SK:    3,
@@ -389,7 +382,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 		if !s.NoError(err) {
 			return
 		}
-		expect := []result{
+		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
 				SK:    3,
@@ -421,13 +414,6 @@ func (s *QueryTestSuite) Test_QueryContext() {
 }
 
 func (s *QueryTestSuite) Test_Query() {
-	type result struct {
-		PK    string
-		SK    float64
-		GSIPK string
-		GSISK string
-	}
-
 	s.Run("full-scan", func() {
 		db := GetDB(s.T())
 		rows, err := db.Query(`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables"`)
@@ -435,7 +421,7 @@ func (s *QueryTestSuite) Test_Query() {
 			return
 		}
 
-		expect := []result{
+		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
 				SK:    1.0,
@@ -491,13 +477,6 @@ func (s *QueryTestSuite) Test_Query() {
 }
 
 func (s *QueryTestSuite) Test_PrepareContext() {
-	type result struct {
-		PK    string
-		SK    float64
-		GSIPK string
-		GSISK string
-	}
-
 	s.Run("full-scan/Query", func() {
 		db := GetDB(s.T())
 		query, err := db.PrepareContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ?`)
@@ -509,7 +488,7 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 			return
 		}
 
-		expect := []result{
+		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
 				SK:    1.0,
@@ -573,7 +552,7 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 			return
 		}
 
-		expect := []result{
+		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
 				SK:    1.0,
@@ -629,13 +608,6 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 }
 
 func (s *QueryTestSuite) Test_Prepare() {
-	type result struct {
-		PK    string
-		SK    float64
-		GSIPK string
-		GSISK string
-	}
-
 	s.Run("full-scan/Query", func() {
 		db := GetDB(s.T())
 		query, err := db.Prepare(`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ?`)
@@ -647,7 +619,7 @@ func (s *QueryTestSuite) Test_Prepare() {
 			return
 		}
 
-		expect := []result{
+		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
 				SK:    1.0,
@@ -711,7 +683,7 @@ func (s *QueryTestSuite) Test_Prepare() {
 			return
 		}
 
-		expect := []result{
+		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
 				SK:    1.0,

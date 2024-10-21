@@ -3,6 +3,7 @@ package pqxd
 import (
 	"context"
 	"database/sql/driver"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -58,19 +59,12 @@ func (c *connection) PrepareContext(ctx context.Context, query string) (driver.S
 	if c.closed.Load() {
 		return nil, driver.ErrBadConn
 	}
-	match := reSELECT.FindStringSubmatch(query)
-	if len(match) == 0 {
-		return nil, nil
-	}
-	selectedList := extractSelectedListFromMatchString(match)
 
-	stmt := newStatement(query, selectedList, numWhereParams(match), c.newFetchClosure,
-		func() error {
-			if c.closed.Load() {
-				return driver.ErrBadConn
-			}
-			return nil
-		})
+	stmt, err := c.preparedStatementFromQueryString(query)
+	if err != nil {
+		return nil, err
+	}
+
 	select {
 	default:
 	case <-ctx.Done():
@@ -107,8 +101,34 @@ func (c *connection) Begin() (driver.Tx, error) {
 
 // ExecContext See: driver.ExecerContext
 func (c *connection) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
-	//TODO implement me
-	panic("implement me")
+	if c.closed.Load() {
+		return nil, driver.ErrBadConn
+	}
+	c.txMu.Lock()
+	defer c.txMu.Unlock()
+	if c.tx != nil {
+		switch c.tx.(type) {
+		case *queryTx:
+			// TODO implement me
+		case *execTx:
+			// TODO implement me
+		}
+	}
+
+	params, err := toPartiQLParameters(args)
+	if err != nil {
+		return nil, err
+	}
+
+	input := dynamodb.ExecuteStatementInput{
+		Statement:  &query,
+		Parameters: params,
+	}
+	_, err = c.client.ExecuteStatement(ctx, &input)
+	if err != nil {
+		return nil, err
+	}
+	return newPqxdResult(1), nil
 }
 
 // QueryContext See: driver.QueryerContext
@@ -159,19 +179,157 @@ func (c *connection) BeginTx(ctx context.Context, opts driver.TxOptions) (driver
 	panic("implement me")
 }
 
-// regex strings
+// named capture keys
 const (
-	namedCaptureKeySelectedList    = "selected_list"
-	reStrSelectedList              = `(?P<` + namedCaptureKeySelectedList + `>(\*|[a-z0-9_\-\.]{1,255}(,\s*[a-z0-9_\-\.]{1,255})*))`
+	// namedCaptureKeySelectedList is the named capture key for selected list
+	namedCaptureKeySelectedList = "selected_list"
+
+	// namedCaptureKeySELECTTableName is the named capture key for table name
 	namedCaptureKeySELECTTableName = "table_name"
-	reStrSELECTTableName           = `(?P<` + namedCaptureKeySELECTTableName + `>("[a-z0-9_\-\.]{3,255}"(\."[a-z0-9_\-\.]{3,255}")?))`
-	namedCaptureKeyWHERE           = "where"
-	reStrWHERE                     = `(?P<` + namedCaptureKeyWHERE + `>(.+\?)*)`
+
+	// namedCaptureKeyWHERECondition is the named capture key for WHERE condition
+	namedCaptureKeyWHERECondition = "where"
+
+	// namedCaptureKeyINSERTValue is the named capture key for INSERT value
+	namedCaptureKeyINSERTValue = "insert_value"
+
+	// namedCaptureKeyUpdateSet is the named capture key for UPDATE set
+	namedCaptureKeyINSERTClause = "insert_clause"
+
+	// namedCaptureKeyUpdateSet is the named capture key for UPDATE set
+	namedCaptureKeyUpdateSet = "update_set"
+
+	// namedCaptureKeyUPDATEClause is the named capture key for UPDATE clause
+	namedCaptureKeyUPDATEClause = "update_clause"
+
+	// namedCaptureKeyDELETEClause is the named capture key for DELETE clause
+	namedCaptureKeyDELETEClause = "delete_clause"
 )
 
-var (
-	reSELECT = regexp.MustCompile(`(?i)(?:SELECT)\s+` + reStrSelectedList + `\s+(?:FROM)\s+` + reStrSELECTTableName + `(\s+(?:WHERE)\s+` + reStrWHERE + `)?`)
+// regular expression strings
+const (
+	// reStrSelectedList is the regular expression for selected list
+	reStrSelectedList = `(?P<` + namedCaptureKeySelectedList + `>(\*|[a-z0-9_\-\.]{1,255}(,\s*[a-z0-9_\-\.]{1,255})*))`
+
+	// reStrSELECTTableName is the regular expression for table name
+	reStrSELECTTableName = `(?P<` + namedCaptureKeySELECTTableName + `>("[a-z0-9_\-\.]{3,255}"(\."[a-z0-9_\-\.]{3,255}")?))`
+
+	// reStrOptionalWHERECondition is the regular expression for WHERE condition as optional
+	reStrOptionalWHERECondition = `(?P<` + namedCaptureKeyWHERECondition + `>((?:WHERE\s+)(.+\?))?)`
+
+	// reStrWHERECondition is the regular expression for WHERE condition
+	reStrWHERECondition = `(?P<` + namedCaptureKeyWHERECondition + `>(?:WHERE\s+)(.+))`
+
+	// reStrINSERTClause is the regular expression for INSERT clause
+	reStrINSERTClause = `(?P<` + namedCaptureKeyINSERTClause + `>INSERT)`
+
+	// reStrINSERTValue is the regular expression for INSERT value
+	reStrINSERTValue = `(?P<` + namedCaptureKeyINSERTValue + `>(\{.+\}))`
+
+	// reStrINSERTStatement is the regular expression for INSERT statement
+	reStrINSERTStatement = `(?i)` + reStrINSERTClause + `\s+(?:INTO)\s+("[a-z0-9_\-\.]{3,255}")\s+(?:VALUE)\s+` + reStrINSERTValue
+
+	// reStrUPDATEClause is the regular expression for UPDATE clause
+	reStrUPDATEClause = `(?P<` + namedCaptureKeyUPDATEClause + `>UPDATE)`
+
+	// reStrUPDATESet is the regular expression for UPDATE set
+	reStrUPDATESet = `(?P<` + namedCaptureKeyUpdateSet + `>(((SET\s+[a-z0-9_\-\.]{3,255}=.+)|(REMOVE\s+[a-z0-9_\-\.]{3,255}=.+))+))`
+
+	// reStrUPDATEStatement is the regular expression for UPDATE statement
+	reStrUPDATEStatement = `(?i)` + reStrUPDATEClause + `(?:\s+("[a-z0-9_\-\.]{3,255}")\s+)` + reStrUPDATESet + reStrWHERECondition
+
+	// reStrDELETEClause is the regular expression for DELETE clause
+	reStrDELETEClause = `(?P<` + namedCaptureKeyDELETEClause + `>DELETE)`
+
+	// reStrDELETEStatement is the regular expression for DELETE statement
+	reStrDELETEStatement = `(?i)` + reStrDELETEClause + `(?:\s+FROM\s+("[a-z0-9_\-\.]{3,255}")\s+)` + reStrWHERECondition
 )
+
+// regexps
+var (
+	// reSELECT is the regular expression for SELECT statement
+	reSELECT = regexp.MustCompile(`(?i)(?:SELECT)\s+` + reStrSelectedList + `\s+(?:FROM)\s+` + reStrSELECTTableName + reStrOptionalWHERECondition)
+
+	// reINSERT is the regular expression for INSERT statement
+	reINSERT = regexp.MustCompile(reStrINSERTStatement)
+
+	// reUPDATE is the regular expression for UPDATE statement
+	reUPDATE = regexp.MustCompile(reStrUPDATEStatement)
+
+	// reDELETE is the regular expression for DELETE statement
+	reDELETE = regexp.MustCompile(reStrDELETEStatement)
+)
+
+var execRegexps = []*regexp.Regexp{reINSERT, reUPDATE, reDELETE}
+
+// preparedStatementFromQueryString returns prepared statement from the query string
+func (c *connection) preparedStatementFromQueryString(query string) (stmt driver.Stmt, err error) {
+	for _, regx := range execRegexps {
+		if match := regx.FindStringSubmatch(query); len(match) > 0 {
+			stmt = newStatementExec(
+				countPlaceHolders(match, regx),
+				c.newExecClosure(dynamodb.ExecuteStatementInput{Statement: &query}),
+				c.newCloseCheckClosure())
+			return
+		}
+	}
+	if match := reSELECT.FindStringSubmatch(query); len(match) > 0 {
+		if len(match) == 0 {
+			return nil, fmt.Errorf("invalid query: %s", query)
+		}
+		selectedList := extractSelectedListFromMatchString(match)
+		stmt = newStatementQuery(query, selectedList, countPlaceHolders(match, reSELECT), nil, nil)
+		return
+	}
+	err = ErrInvalidPreparedStatement
+	return
+}
+
+// newFetchClosure returns fetchClosure
+func (c *connection) newFetchClosure(input dynamodb.ExecuteStatementInput) fetchClosure {
+	return func(ctx context.Context, nextToken *string, dest *[]map[string]types.AttributeValue) (*string, error) {
+		if c.closed.Load() {
+			return nil, driver.ErrBadConn
+		}
+
+		output, err := c.client.ExecuteStatement(ctx, &input)
+		if err != nil {
+			return nil, err
+		}
+		*dest = output.Items
+		return output.NextToken, nil
+	}
+}
+
+// newExecClosure returns execClosure
+func (c *connection) newExecClosure(input dynamodb.ExecuteStatementInput) execClosure {
+	return func(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
+		if c.closed.Load() {
+			return nil, driver.ErrBadConn
+		}
+		params, err := toPartiQLParameters(args)
+		if err != nil {
+			return nil, err
+		}
+
+		input.Parameters = params
+		_, err = c.client.ExecuteStatement(ctx, &input)
+		if err != nil {
+			return nil, err
+		}
+		return newPqxdResult(1), nil
+	}
+}
+
+// newCloseCheckClosure returns closure for checking if the connection is closed
+func (c *connection) newCloseCheckClosure() func() error {
+	return func() error {
+		if c.closed.Load() {
+			return driver.ErrBadConn
+		}
+		return nil
+	}
+}
 
 // extractSelectedListFromMatchString extracts selected list from the match string
 func extractSelectedListFromMatchString(match []string) (columns []string) {
@@ -192,54 +350,19 @@ func extractTableNameFromMatchString(match []string) string {
 	return strings.TrimSpace(trimmedWQuot)
 }
 
-// numWhereParams returns where parameters counts
-func numWhereParams(match []string) int {
-	whereParams := match[reSELECT.SubexpIndex(namedCaptureKeyWHERE)]
-	return strings.Count(whereParams, "?")
-}
-
-// fetchResult
-type fetchResult struct {
-	out       []map[string]types.AttributeValue
-	nextToken *string
-}
-
-// newFetchClosure returns fetchClosure
-func (c *connection) newFetchClosure(input dynamodb.ExecuteStatementInput) fetchClosure {
-	return func(ctx context.Context, nextToken *string, dest *[]map[string]types.AttributeValue) (*string, error) {
-		if c.closed.Load() {
-			return nil, driver.ErrBadConn
-		}
-		resultCh := make(chan fetchResult, 1)
-		errCh := make(chan error, 1)
-		go func() {
-			output, err := c.client.ExecuteStatement(ctx, &input)
-			if err != nil {
-				errCh <- err
-				close(errCh)
-				close(resultCh)
-				return
-			}
-			resultCh <- fetchResult{
-				out:       output.Items,
-				nextToken: output.NextToken,
-			}
-			close(errCh)
-			close(resultCh)
-		}()
-
-		for {
-			select {
-			case result := <-resultCh:
-				*dest = result.out
-				return result.nextToken, nil
-			case err := <-errCh:
-				return nil, err
-			case <-ctx.Done():
-				return nil, nil
-			}
-		}
+// countPlaceHolders counts the number of placeholders in the query
+func countPlaceHolders(match []string, regx *regexp.Regexp) int {
+	var count int
+	if i := regx.SubexpIndex(namedCaptureKeyWHERECondition); i != -1 {
+		count += strings.Count(match[i], "?")
 	}
+	if i := regx.SubexpIndex(namedCaptureKeyINSERTValue); i != -1 {
+		count += strings.Count(match[i], "?")
+	}
+	if i := regx.SubexpIndex(namedCaptureKeyUpdateSet); i != -1 {
+		count += strings.Count(match[i], "?")
+	}
+	return count
 }
 
 // toNamedValue converts []driver.Value to []driver.NamedValue

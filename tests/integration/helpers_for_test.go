@@ -1,9 +1,11 @@
 package integration
 
 import (
+	"context"
 	"database/sql"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/joho/godotenv"
 	"github.com/miyamo2/pqxd"
@@ -51,4 +53,21 @@ func GetDB(t *testing.T) *sql.DB {
 func GetClient(t *testing.T) *dynamodb.Client {
 	t.Helper()
 	return client
+}
+
+func PutTestTable(t *testing.T, data ...TestTables) {
+	t.Helper()
+	for _, v := range data {
+		av, err := attributevalue.MarshalMap(v)
+		if err != nil {
+			t.Fatalf("failed to marshal map: %s", err.Error())
+		}
+		input := &dynamodb.PutItemInput{
+			Item:      av,
+			TableName: aws.String("test_tables"),
+		}
+		if _, err = client.PutItem(context.Background(), input); err != nil {
+			t.Fatalf("failed to put item: %s", err)
+		}
+	}
 }

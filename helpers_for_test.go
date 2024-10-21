@@ -95,3 +95,17 @@ func MockDynamoDBClient(t *testing.T, ctrl *gomock.Controller, opts ...MockDynam
 	}
 	return client
 }
+
+func GetAllResultSet(t *testing.T, rows driver.Rows) ([][]map[string]types.AttributeValue, error) {
+	t.Helper()
+	var results [][]map[string]types.AttributeValue
+	switch rs := (any)(rows).(type) {
+	case *pqxdRows:
+		for rs.NextResultSet() == nil {
+			resultSet := *rs.out.Load()
+			results = append(results, resultSet)
+			rs.outCursor.Store(uint32(len(resultSet) - 1))
+		}
+	}
+	return results, nil
+}
