@@ -18,12 +18,14 @@ func init() {
 }
 
 // compatibility check
-var _ driver.Driver = (*pqxdDriver)(nil)
+var (
+	_ driver.Driver    = (*pqxdDriver)(nil)
+	_ driver.Connector = (*pqxdDriver)(nil)
+)
 
 // pqxdDriver is an implementation of driver.Driver.
 type pqxdDriver struct {
 	// awsConfig is the aws.Config for the connection.
-	// Usually nil, but if generated from connector, it will be taken over from connector
 	awsConfig *aws.Config
 
 	// connParam is the connection parameters.
@@ -34,38 +36,23 @@ type pqxdDriver struct {
 }
 
 // Open See: driver.Driver.
-func (d pqxdDriver) Open(connectionString string) (driver.Conn, error) {
+func (d *pqxdDriver) Open(connectionString string) (driver.Conn, error) {
 	if d.awsConfig != nil {
-		return &connection{
-			client: dynamodb.NewFromConfig(*d.awsConfig),
-		}, nil
+		return newConnection(dynamodb.NewFromConfig(*d.awsConfig)), nil
 	}
 
 	return d.open(connectionString)
 }
 
-// compatibility check
-var _ driver.Connector = (*connector)(nil)
-
-// connector is an implementation of driver.Connector.
-type connector struct {
-	// awsConfig is the aws.Config for the connection.
-	awsConfig aws.Config
-}
-
 // Connect See: driver.Connector.
-func (c connector) Connect(_ context.Context) (driver.Conn, error) {
-	client := dynamodb.NewFromConfig(c.awsConfig)
-	return &connection{
-		client: client,
-	}, nil
+func (d *pqxdDriver) Connect(_ context.Context) (driver.Conn, error) {
+	client := dynamodb.NewFromConfig(*d.awsConfig)
+	return newConnection(client), nil
 }
 
 // Driver See: driver.Connector.
-func (c connector) Driver() driver.Driver {
-	return pqxdDriver{
-		awsConfig: &c.awsConfig,
-	}
+func (d *pqxdDriver) Driver() driver.Driver {
+	return d
 }
 
 // ConnectorSetting is the setting for the connector.
@@ -75,13 +62,13 @@ type ConnectorSetting struct{}
 type ConnectorOption func(*ConnectorSetting)
 
 // NewConnector creates a new connector with the given aws.Config and ConnectorOption.
-func NewConnector(awsConfig aws.Config, options ...ConnectorOption) *connector {
+func NewConnector(awsConfig aws.Config, options ...ConnectorOption) *pqxdDriver {
 	setting := ConnectorSetting{}
 	for _, option := range options {
 		option(&setting)
 	}
-	return &connector{
-		awsConfig: awsConfig,
+	return &pqxdDriver{
+		awsConfig: &awsConfig,
 	}
 }
 
@@ -112,7 +99,7 @@ const (
 )
 
 // open establishes a connection with a DynamoDB with a connection string.
-func (d pqxdDriver) open(connStr string) (driver.Conn, error) {
+func (d *pqxdDriver) open(connStr string) (driver.Conn, error) {
 	// intended to be called only once for a cold start, but with careful exclusivity control.
 	d.connParamMu.Lock()
 	defer d.connParamMu.Unlock()
@@ -122,9 +109,7 @@ func (d pqxdDriver) open(connStr string) (driver.Conn, error) {
 	opts := dynamoDBOptionsFromParams(d.connParam)
 	client := dynamodb.New(opts)
 
-	return &connection{
-		client: client,
-	}, nil
+	return newConnection(client), nil
 }
 
 // connectionParam is Key/Value pair for the connection string.
