@@ -21,6 +21,7 @@ import (
 type MockDynamoDBClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockDynamoDBClientMockRecorder
+	isgomock struct{}
 }
 
 // MockDynamoDBClientMockRecorder is the mock recorder for MockDynamoDBClient.
