@@ -27,9 +27,7 @@ func Test_Connection_Ping(t *testing.T) {
 		"common": {
 			ctx: context.Background(),
 			sut: func(client internal.DynamoDBClient) *connection {
-				return &connection{
-					client: client,
-				}
+				return newConnection(client)
 			},
 			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient {
 				client := internal.NewMockDynamoDBClient(ctrl)
@@ -40,9 +38,7 @@ func Test_Connection_Ping(t *testing.T) {
 		"client-returns-error": {
 			ctx: context.Background(),
 			sut: func(client internal.DynamoDBClient) *connection {
-				return &connection{
-					client: client,
-				}
+				return newConnection(client)
 			},
 			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient {
 				client := internal.NewMockDynamoDBClient(ctrl)
@@ -86,61 +82,47 @@ func Test_Connection_Ping(t *testing.T) {
 func Test_Connection_Close(t *testing.T) {
 	type test struct {
 		ctx            context.Context
-		tx             func() transaction
 		dynamoDBClient func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient
-		sut            func(client internal.DynamoDBClient, tx transaction) *connection
+		sut            func(client internal.DynamoDBClient) *connection
 		want           error
 	}
 
 	tests := map[string]test{
 		"common": {
 			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient, tx transaction) *connection {
-				return &connection{
-					client: client,
-					tx:     tx,
-				}
+			sut: func(client internal.DynamoDBClient) *connection {
+				return newConnection(client)
 			},
 			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient {
 				client := internal.NewMockDynamoDBClient(ctrl)
 				return client
 			},
-			tx: func() transaction { return nil },
 		},
 		"ongoing-query-tx": {
 			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient, tx transaction) *connection {
-				return &connection{
-					client: client,
-					tx:     tx,
-				}
+			sut: func(client internal.DynamoDBClient) *connection {
+				return newConnection(client)
 			},
 			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient {
 				client := internal.NewMockDynamoDBClient(ctrl)
 				return client
 			},
-			tx: func() transaction { return &queryTx{} },
 		},
 		"ongoing-exec-tx": {
 			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient, tx transaction) *connection {
-				return &connection{
-					client: client,
-					tx:     tx,
-				}
+			sut: func(client internal.DynamoDBClient) *connection {
+				return newConnection(client)
 			},
 			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient {
 				client := internal.NewMockDynamoDBClient(ctrl)
 				return client
 			},
-			tx: func() transaction { return &execTx{} },
 		},
 		"closed-connection": {
 			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient, tx transaction) *connection {
+			sut: func(client internal.DynamoDBClient) *connection {
 				return &connection{
 					client: client,
-					tx:     tx,
 					closed: *atomic.NewBool(true),
 				}
 			},
@@ -148,7 +130,6 @@ func Test_Connection_Close(t *testing.T) {
 				client := internal.NewMockDynamoDBClient(ctrl)
 				return client
 			},
-			tx: func() transaction { return nil },
 		},
 	}
 
@@ -158,8 +139,7 @@ func Test_Connection_Close(t *testing.T) {
 			defer ctrl.Finish()
 
 			client := tt.dynamoDBClient(tt.ctx, ctrl)
-			tx := tt.tx()
-			sut := tt.sut(client, tx)
+			sut := tt.sut(client)
 			got := sut.Close()
 			if !errors.Is(tt.want, got) {
 				t.Errorf("Close() = %v, want %v", got, tt.want)
@@ -179,8 +159,7 @@ func Test_pqxdRows_QueryContext(t *testing.T) {
 	}
 	type test struct {
 		ctx                     context.Context
-		sut                     func(client internal.DynamoDBClient, tx transaction) *connection
-		tx                      func() transaction
+		sut                     func(client internal.DynamoDBClient) *connection
 		executeStatementResults []ExecuteStatementResult
 		args                    args
 		want                    want
@@ -189,155 +168,9 @@ func Test_pqxdRows_QueryContext(t *testing.T) {
 	tests := map[string]test{
 		"common": {
 			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient, tx transaction) *connection {
-				return &connection{
-					client: client,
-					tx:     tx,
-				}
+			sut: func(client internal.DynamoDBClient) *connection {
+				return newConnection(client)
 			},
-			tx: func() transaction { return nil },
-			executeStatementResults: []ExecuteStatementResult{
-				{
-					out: &dynamodb.ExecuteStatementOutput{
-						Items: []map[string]types.AttributeValue{
-							{
-								"id":   &types.AttributeValueMemberS{Value: "1"},
-								"name": &types.AttributeValueMemberS{Value: "Alice"},
-							},
-							{
-								"id":   &types.AttributeValueMemberS{Value: "2"},
-								"name": &types.AttributeValueMemberS{Value: "Bob"},
-							},
-						},
-						NextToken: aws.String("1"),
-					},
-				},
-				{
-					out: &dynamodb.ExecuteStatementOutput{
-						Items: []map[string]types.AttributeValue{
-							{
-								"id":   &types.AttributeValueMemberS{Value: "3"},
-								"name": &types.AttributeValueMemberS{Value: "Charlie"},
-							},
-							{
-								"id":   &types.AttributeValueMemberS{Value: "4"},
-								"name": &types.AttributeValueMemberS{Value: "David"},
-							},
-						},
-					},
-				},
-			},
-			args: args{
-				query: `SELECT id, name FROM "users" WHERE disabled = ?`,
-				args: []driver.NamedValue{
-					{Value: false},
-				},
-			},
-			want: want{
-				resultSets: [][]map[string]types.AttributeValue{
-					{
-						{
-							"id":   &types.AttributeValueMemberS{Value: "1"},
-							"name": &types.AttributeValueMemberS{Value: "Alice"},
-						},
-						{
-							"id":   &types.AttributeValueMemberS{Value: "2"},
-							"name": &types.AttributeValueMemberS{Value: "Bob"},
-						},
-					},
-					{
-						{
-							"id":   &types.AttributeValueMemberS{Value: "3"},
-							"name": &types.AttributeValueMemberS{Value: "Charlie"},
-						},
-						{
-							"id":   &types.AttributeValueMemberS{Value: "4"},
-							"name": &types.AttributeValueMemberS{Value: "David"},
-						},
-					},
-				},
-			},
-		},
-		"ongoing-query-tx": {
-			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient, tx transaction) *connection {
-				return &connection{
-					client: client,
-					tx:     tx,
-				}
-			},
-			tx: func() transaction { return &queryTx{} },
-			executeStatementResults: []ExecuteStatementResult{
-				{
-					out: &dynamodb.ExecuteStatementOutput{
-						Items: []map[string]types.AttributeValue{
-							{
-								"id":   &types.AttributeValueMemberS{Value: "1"},
-								"name": &types.AttributeValueMemberS{Value: "Alice"},
-							},
-							{
-								"id":   &types.AttributeValueMemberS{Value: "2"},
-								"name": &types.AttributeValueMemberS{Value: "Bob"},
-							},
-						},
-						NextToken: aws.String("1"),
-					},
-				},
-				{
-					out: &dynamodb.ExecuteStatementOutput{
-						Items: []map[string]types.AttributeValue{
-							{
-								"id":   &types.AttributeValueMemberS{Value: "3"},
-								"name": &types.AttributeValueMemberS{Value: "Charlie"},
-							},
-							{
-								"id":   &types.AttributeValueMemberS{Value: "4"},
-								"name": &types.AttributeValueMemberS{Value: "David"},
-							},
-						},
-					},
-				},
-			},
-			args: args{
-				query: `SELECT id, name FROM "users" WHERE disabled = ?`,
-				args: []driver.NamedValue{
-					{Value: false},
-				},
-			},
-			want: want{
-				resultSets: [][]map[string]types.AttributeValue{
-					{
-						{
-							"id":   &types.AttributeValueMemberS{Value: "1"},
-							"name": &types.AttributeValueMemberS{Value: "Alice"},
-						},
-						{
-							"id":   &types.AttributeValueMemberS{Value: "2"},
-							"name": &types.AttributeValueMemberS{Value: "Bob"},
-						},
-					},
-					{
-						{
-							"id":   &types.AttributeValueMemberS{Value: "3"},
-							"name": &types.AttributeValueMemberS{Value: "Charlie"},
-						},
-						{
-							"id":   &types.AttributeValueMemberS{Value: "4"},
-							"name": &types.AttributeValueMemberS{Value: "David"},
-						},
-					},
-				},
-			},
-		},
-		"ongoing-exec-tx": {
-			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient, tx transaction) *connection {
-				return &connection{
-					client: client,
-					tx:     tx,
-				}
-			},
-			tx: func() transaction { return &execTx{} },
 			executeStatementResults: []ExecuteStatementResult{
 				{
 					out: &dynamodb.ExecuteStatementOutput{
@@ -402,14 +235,12 @@ func Test_pqxdRows_QueryContext(t *testing.T) {
 		},
 		"closed-connection": {
 			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient, tx transaction) *connection {
+			sut: func(client internal.DynamoDBClient) *connection {
 				return &connection{
 					client: client,
-					tx:     tx,
 					closed: *atomic.NewBool(true),
 				}
 			},
-			tx: func() transaction { return nil },
 			args: args{
 				query: `SELECT id, name FROM "users" WHERE disabled = ?`,
 				args: []driver.NamedValue{
@@ -434,8 +265,7 @@ func Test_pqxdRows_QueryContext(t *testing.T) {
 			}
 
 			client := MockDynamoDBClient(t, ctrl, MockDynamoDBClientWithExecuteStatement(t, input, tt.executeStatementResults))
-			tx := tt.tx()
-			sut := tt.sut(client, tx)
+			sut := tt.sut(client)
 
 			got, err := sut.QueryContext(tt.ctx, qArgs.query, qArgs.args)
 			if !errors.Is(err, tt.want.err) {

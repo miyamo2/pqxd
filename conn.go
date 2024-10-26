@@ -11,7 +11,6 @@ import (
 	"go.uber.org/atomic"
 	"regexp"
 	"strings"
-	"sync"
 )
 
 // compatibility checks
@@ -33,11 +32,17 @@ type connection struct {
 	// closed if true, the connection is closed
 	closed atomic.Bool
 
-	// tx is an ongoing transaction
-	tx transaction
+	// txOngoing if true, the transaction is ongoing
+	txOngoing atomic.Bool
 
-	// txMu is the lock for tx
-	txMu sync.RWMutex
+	// txStmtPub publishes statements in a transaction
+	txStmtPub atomic.Pointer[transactionStatementPublisher]
+
+	// txCommiter commits the transaction
+	txCommiter atomic.Pointer[transactionCommitter]
+
+	// txRollbacker rolls back the transaction
+	txRollbacker atomic.Pointer[transactionRollbacker]
 }
 
 // Ping See: driver.Pinger
@@ -80,23 +85,15 @@ func (c *connection) Close() error {
 		return nil
 	}
 	defer c.closed.Store(true)
-	c.txMu.Lock()
-	defer c.txMu.Unlock()
-	if c.tx != nil {
-		switch c.tx.(type) {
-		case *queryTx:
-			// TODO implement me
-		case *execTx:
-			// TODO implement me
-		}
+	if c.txOngoing.Load() {
+		c.txRollbacker.Load().rollback()
 	}
 	return nil
 }
 
 // Begin See: driver.Conn
 func (c *connection) Begin() (driver.Tx, error) {
-	//TODO implement me
-	panic("implement me")
+	return c.BeginTx(context.Background(), driver.TxOptions{})
 }
 
 // ExecContext See: driver.ExecerContext
@@ -104,20 +101,21 @@ func (c *connection) ExecContext(ctx context.Context, query string, args []drive
 	if c.closed.Load() {
 		return nil, driver.ErrBadConn
 	}
-	c.txMu.Lock()
-	defer c.txMu.Unlock()
-	if c.tx != nil {
-		switch c.tx.(type) {
-		case *queryTx:
-			// TODO implement me
-		case *execTx:
-			// TODO implement me
-		}
-	}
 
 	params, err := toPartiQLParameters(args)
 	if err != nil {
 		return nil, err
+	}
+
+	if c.txOngoing.Load() {
+		inout := &transactionInOut{
+			input: types.ParameterizedStatement{
+				Statement:  &query,
+				Parameters: params,
+			},
+		}
+		c.txStmtPub.Load().publish(inout)
+		return newLazyResult(c.newTxGetAffected(inout)), nil
 	}
 
 	input := dynamodb.ExecuteStatementInput{
@@ -142,20 +140,21 @@ func (c *connection) QueryContext(ctx context.Context, query string, args []driv
 	}
 	selectedList := extractSelectedListFromMatchString(match)
 
-	c.txMu.Lock()
-	defer c.txMu.Unlock()
-	if c.tx != nil {
-		switch c.tx.(type) {
-		case *queryTx:
-			// TODO implement me
-		case *execTx:
-			// TODO implement me
-		}
-	}
-
 	params, err := toPartiQLParameters(args)
 	if err != nil {
 		return nil, err
+	}
+
+	if c.txOngoing.Load() {
+		inout := &transactionInOut{
+			input: types.ParameterizedStatement{
+				Statement:  &query,
+				Parameters: params,
+			},
+		}
+		fetch := c.newTxFetchClosure(inout)
+		c.txStmtPub.Load().publish(inout)
+		return newTxRows(selectedList, fetch, c.txCommiter.Load()), nil
 	}
 
 	input := dynamodb.ExecuteStatementInput{
@@ -175,8 +174,76 @@ func (c *connection) QueryContext(ctx context.Context, query string, args []driv
 
 // BeginTx See: driver.ConnBeginTx
 func (c *connection) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
-	//TODO implement me
-	panic("implement me")
+	if c.closed.Load() {
+		return nil, driver.ErrBadConn
+	}
+	if c.txOngoing.Load() {
+		return nil, ErrTxDualBoot
+	}
+
+	txStmtCh := make(chan *transactionInOut)
+	commitCh := make(chan struct{}, 1)
+	commitDone := make(chan struct{}, 1)
+	rollbackCh := make(chan struct{}, 1)
+	rollbackDone := make(chan struct{}, 1)
+
+	c.txStmtPub = *atomic.NewPointer(&transactionStatementPublisher{ch: txStmtCh})
+	c.txCommiter = *atomic.NewPointer(&transactionCommitter{ch: commitCh, done: commitDone})
+	c.txRollbacker = *atomic.NewPointer(&transactionRollbacker{ch: rollbackCh, done: rollbackDone})
+	c.txOngoing.Store(true)
+
+	go func() {
+		var inouts []*transactionInOut
+		defer func() {
+			c.txOngoing.Store(false)
+			c.txStmtPub.Load().close()
+			c.txCommiter.Load().close()
+			close(commitDone)
+			c.txRollbacker.Load().close()
+			close(rollbackDone)
+		}()
+		for {
+			select {
+			default:
+				// do nothing
+			case inout, ok := <-txStmtCh:
+				if !ok {
+					continue
+				}
+				inouts = append(inouts, inout)
+			case _, ok := <-commitCh:
+				if !ok {
+					continue
+				}
+				var inputs []types.ParameterizedStatement
+				for _, inout := range inouts {
+					inputs = append(inputs, inout.input)
+				}
+				txResult, err := c.client.ExecuteTransaction(ctx, &dynamodb.ExecuteTransactionInput{
+					TransactStatements:     inputs,
+					ReturnConsumedCapacity: types.ReturnConsumedCapacityNone,
+				})
+				if err != nil {
+					for _, inout := range inouts {
+						inout.err = err
+					}
+					return
+				}
+				for i, resp := range txResult.Responses {
+					inouts[i].output = resp.Item
+				}
+				return
+			case _, ok := <-rollbackCh:
+				if !ok {
+					continue
+				}
+				return
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return c, nil
 }
 
 // named capture keys
@@ -208,17 +275,16 @@ const (
 
 // regular expression strings
 const (
+	// reStrWHERECondition is the regular expression for WHERE condition
+	reStrWHERECondition = `(?P<` + namedCaptureKeyWHERECondition + `>(?:WHERE\s+)(.+))`
+
 	// reStrSelectedList is the regular expression for selected list
 	reStrSelectedList = `(?P<` + namedCaptureKeySelectedList + `>(\*|[a-z0-9_\-\.]{1,255}(,\s*[a-z0-9_\-\.]{1,255})*))`
 
 	// reStrSELECTTableName is the regular expression for table name
 	reStrSELECTTableName = `(?P<` + namedCaptureKeySELECTTableName + `>("[a-z0-9_\-\.]{3,255}"(\."[a-z0-9_\-\.]{3,255}")?))`
 
-	// reStrOptionalWHERECondition is the regular expression for WHERE condition as optional
-	reStrOptionalWHERECondition = `(?P<` + namedCaptureKeyWHERECondition + `>((?:WHERE\s+)(.+\?))?)`
-
-	// reStrWHERECondition is the regular expression for WHERE condition
-	reStrWHERECondition = `(?P<` + namedCaptureKeyWHERECondition + `>(?:WHERE\s+)(.+))`
+	reStrSELECTStatement = `(?i)^\s*(?:SELECT)\s+` + reStrSelectedList + `\s+(?:FROM)\s+` + reStrSELECTTableName + `(\s+` + reStrWHERECondition + `)?` + `\s*$`
 
 	// reStrINSERTClause is the regular expression for INSERT clause
 	reStrINSERTClause = `(?P<` + namedCaptureKeyINSERTClause + `>INSERT)`
@@ -227,7 +293,7 @@ const (
 	reStrINSERTValue = `(?P<` + namedCaptureKeyINSERTValue + `>(\{.+\}))`
 
 	// reStrINSERTStatement is the regular expression for INSERT statement
-	reStrINSERTStatement = `(?i)` + reStrINSERTClause + `\s+(?:INTO)\s+("[a-z0-9_\-\.]{3,255}")\s+(?:VALUE)\s+` + reStrINSERTValue
+	reStrINSERTStatement = `(?i)^\s*` + reStrINSERTClause + `\s+(?:INTO)\s+("[a-z0-9_\-\.]{3,255}")\s+(?:VALUE)\s+` + reStrINSERTValue + `\s*$`
 
 	// reStrUPDATEClause is the regular expression for UPDATE clause
 	reStrUPDATEClause = `(?P<` + namedCaptureKeyUPDATEClause + `>UPDATE)`
@@ -236,19 +302,19 @@ const (
 	reStrUPDATESet = `(?P<` + namedCaptureKeyUpdateSet + `>(((SET\s+[a-z0-9_\-\.]{3,255}=.+)|(REMOVE\s+[a-z0-9_\-\.]{3,255}=.+))+))`
 
 	// reStrUPDATEStatement is the regular expression for UPDATE statement
-	reStrUPDATEStatement = `(?i)` + reStrUPDATEClause + `(?:\s+("[a-z0-9_\-\.]{3,255}")\s+)` + reStrUPDATESet + reStrWHERECondition
+	reStrUPDATEStatement = `(?i)^\s*` + reStrUPDATEClause + `(?:\s+("[a-z0-9_\-\.]{3,255}")\s+)` + reStrUPDATESet + reStrWHERECondition + `\s*$`
 
 	// reStrDELETEClause is the regular expression for DELETE clause
 	reStrDELETEClause = `(?P<` + namedCaptureKeyDELETEClause + `>DELETE)`
 
 	// reStrDELETEStatement is the regular expression for DELETE statement
-	reStrDELETEStatement = `(?i)` + reStrDELETEClause + `(?:\s+FROM\s+("[a-z0-9_\-\.]{3,255}")\s+)` + reStrWHERECondition
+	reStrDELETEStatement = `(?i)^\s*` + reStrDELETEClause + `(?:\s+FROM\s+("[a-z0-9_\-\.]{3,255}")\s+)` + reStrWHERECondition + `\s*$`
 )
 
 // regexps
 var (
 	// reSELECT is the regular expression for SELECT statement
-	reSELECT = regexp.MustCompile(`(?i)(?:SELECT)\s+` + reStrSelectedList + `\s+(?:FROM)\s+` + reStrSELECTTableName + reStrOptionalWHERECondition)
+	reSELECT = regexp.MustCompile(reStrSELECTStatement)
 
 	// reINSERT is the regular expression for INSERT statement
 	reINSERT = regexp.MustCompile(reStrINSERTStatement)
@@ -267,8 +333,9 @@ func (c *connection) preparedStatementFromQueryString(query string) (stmt driver
 	for _, regx := range execRegexps {
 		if match := regx.FindStringSubmatch(query); len(match) > 0 {
 			stmt = newStatementExec(
+				query,
 				countPlaceHolders(match, regx),
-				c.newExecClosure(dynamodb.ExecuteStatementInput{Statement: &query}),
+				c.ExecContext,
 				c.newCloseCheckClosure())
 			return
 		}
@@ -277,8 +344,11 @@ func (c *connection) preparedStatementFromQueryString(query string) (stmt driver
 		if len(match) == 0 {
 			return nil, fmt.Errorf("invalid query: %s", query)
 		}
-		selectedList := extractSelectedListFromMatchString(match)
-		stmt = newStatementQuery(query, selectedList, countPlaceHolders(match, reSELECT), nil, nil)
+		stmt = newStatementQuery(
+			query,
+			countPlaceHolders(match, reSELECT),
+			c.QueryContext,
+			c.newCloseCheckClosure())
 		return
 	}
 	err = ErrInvalidPreparedStatement
@@ -328,6 +398,42 @@ func (c *connection) newCloseCheckClosure() func() error {
 			return driver.ErrBadConn
 		}
 		return nil
+	}
+}
+
+// newConnection returns a new connection
+func newConnection(client internal.DynamoDBClient) *connection {
+	return &connection{
+		client:    client,
+		closed:    *atomic.NewBool(false),
+		txOngoing: *atomic.NewBool(false),
+	}
+}
+
+// newTxFetchClosure returns fetchClosure
+func (c *connection) newTxFetchClosure(inOut *transactionInOut) fetchClosure {
+	return func(_ context.Context, _ *string, dest *[]map[string]types.AttributeValue) (*string, error) {
+		if c.txOngoing.Load() {
+			return nil, nil
+		}
+		if inOut.err != nil {
+			return nil, inOut.err
+		}
+		*dest = []map[string]types.AttributeValue{inOut.output}
+		return nil, nil
+	}
+}
+
+// newTxGetAffected returns closure for getting affected rows in a transaction
+func (c *connection) newTxGetAffected(inOut *transactionInOut) func() (int64, error) {
+	return func() (int64, error) {
+		if c.txOngoing.Load() {
+			return 0, nil
+		}
+		if inOut.err != nil {
+			return 0, inOut.err
+		}
+		return 1, nil
 	}
 }
 

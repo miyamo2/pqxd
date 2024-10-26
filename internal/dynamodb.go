@@ -6,6 +6,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
+// compatibility check
+var _ DynamoDBClient = (*dynamodb.Client)(nil)
+
 // DynamoDBClient
 //
 // See: https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/dynamodb#Client

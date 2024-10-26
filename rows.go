@@ -9,6 +9,7 @@ import (
 	"io"
 	"maps"
 	"slices"
+	"sync"
 )
 
 // compatibility check
@@ -82,7 +83,7 @@ func (r *pqxdRows) HasNextResultSet() bool {
 func (r *pqxdRows) NextResultSet() error {
 	out := *r.out.Load()
 	cursor := r.outCursor.Load()
-	if len(out) != 0 && len(out)-1 != int(cursor) {
+	if len(out) != 0 && len(out) > int(cursor) {
 		return nil
 	}
 
@@ -137,5 +138,52 @@ func newRows(columnNames []string, nextToken *string, fetch fetchClosure, out []
 		nextToken:   *atomic.NewPointer(nextToken),
 		fetch:       fetch,
 		out:         *atomic.NewPointer(&out),
+	}
+}
+
+var _ driver.Rows = (*txRows)(nil)
+
+// txRows is an implementation of driver.Rows
+type txRows struct {
+	pqxdRows
+
+	// txCommiter commits the transaction
+	txCommiter *transactionCommitter
+
+	once sync.Once
+}
+
+func (r *txRows) Next(dest []driver.Value) error {
+	if err := r.NextResultSet(); err != nil {
+		return err
+	}
+	return r.pqxdRows.Next(dest)
+}
+
+func (r *txRows) HasNextResultSet() bool {
+	r.txCommiter.commit()
+	return r.pqxdRows.HasNextResultSet()
+}
+
+func (r *txRows) NextResultSet() error {
+	r.txCommiter.commit()
+	var err error
+	r.once.Do(func() {
+		err = r.pqxdRows.NextResultSet()
+	})
+	return err
+}
+
+// newTxRows returns a new txRows
+func newTxRows(columnNames []string, fetch fetchClosure, txCommiter *transactionCommitter) *txRows {
+	return &txRows{
+		pqxdRows: pqxdRows{
+			columnNames: columnNames,
+			nextToken:   *atomic.NewPointer(new(string)),
+			fetch:       fetch,
+			out:         *atomic.NewPointer(new([]map[string]types.AttributeValue)),
+		},
+		txCommiter: txCommiter,
+		once:       sync.Once{},
 	}
 }

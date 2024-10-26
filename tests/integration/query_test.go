@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"testing"
 	"time"
@@ -115,7 +116,6 @@ func (s *QueryTestSuite) testData() []map[string]types.AttributeValue {
 }
 
 func (s *QueryTestSuite) SetupSubTest() {
-	s.TearDownSubTest()
 	var items []types.TransactWriteItem
 	for _, item := range s.testData() {
 		put := &types.TransactWriteItem{
@@ -130,9 +130,7 @@ func (s *QueryTestSuite) SetupSubTest() {
 		TransactItems: items,
 	}
 	_, err := s.client.TransactWriteItems(context.Background(), input)
-	if err != nil {
-		s.Failf("failed to transact items, %s", err.Error())
-	}
+	require.NoError(s.T(), err)
 }
 
 func (s *QueryTestSuite) TearDownSubTest() {
@@ -145,9 +143,7 @@ func (s *QueryTestSuite) TearDownSubTest() {
 			TableName: aws.String("test_tables"),
 		}
 		_, err := s.client.DeleteItem(context.Background(), input)
-		if err != nil {
-			s.Failf("failed to delete item, %s", err.Error())
-		}
+		require.NoError(s.T(), err)
 	}
 }
 
@@ -155,9 +151,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 	s.Run("full-scan", func() {
 		db := GetDB(s.T())
 		rows, err := db.QueryContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables"`)
-		if !s.NoError(err) {
-			return
-		}
+		require.NoError(s.T(), err)
 
 		expect := []TestTables{
 			{
@@ -201,13 +195,11 @@ func (s *QueryTestSuite) Test_QueryContext() {
 					gsiSk string
 				)
 
-				if !s.NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk)) {
-					return
-				}
-				s.Equal(expect[i].PK, pk)
-				s.Equal(expect[i].SK, sk)
-				s.Equal(expect[i].GSIPK, gsiPk)
-				s.Equal(expect[i].GSISK, gsiSk)
+				require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+				require.Equal(s.T(), expect[i].PK, pk)
+				require.Equal(s.T(), expect[i].SK, sk)
+				require.Equal(s.T(), expect[i].GSIPK, gsiPk)
+				require.Equal(s.T(), expect[i].GSISK, gsiSk)
 				i++
 			}
 		}
@@ -215,9 +207,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 	s.Run("with-pk", func() {
 		db := GetDB(s.T())
 		rows, err := db.QueryContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ?`, "TestQueryTestSuite")
-		if !s.NoError(err) {
-			return
-		}
+		require.NoError(s.T(), err)
 		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
@@ -260,13 +250,11 @@ func (s *QueryTestSuite) Test_QueryContext() {
 					gsiSk string
 				)
 
-				if !s.NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk)) {
-					return
-				}
-				s.Equal(expect[i].PK, pk)
-				s.Equal(expect[i].SK, sk)
-				s.Equal(expect[i].GSIPK, gsiPk)
-				s.Equal(expect[i].GSISK, gsiSk)
+				require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+				require.Equal(s.T(), expect[i].PK, pk)
+				require.Equal(s.T(), expect[i].SK, sk)
+				require.Equal(s.T(), expect[i].GSIPK, gsiPk)
+				require.Equal(s.T(), expect[i].GSISK, gsiSk)
 				i++
 			}
 		}
@@ -274,9 +262,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 	s.Run("with-pk-and-sk", func() {
 		db := GetDB(s.T())
 		rows, err := db.QueryContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`, "TestQueryTestSuite", 3)
-		if !s.NoError(err) {
-			return
-		}
+		require.NoError(s.T(), err)
 		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
@@ -295,13 +281,11 @@ func (s *QueryTestSuite) Test_QueryContext() {
 					gsiSk string
 				)
 
-				if !s.NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk)) {
-					return
-				}
-				s.Equal(expect[i].PK, pk)
-				s.Equal(expect[i].SK, sk)
-				s.Equal(expect[i].GSIPK, gsiPk)
-				s.Equal(expect[i].GSISK, gsiSk)
+				require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+				require.Equal(s.T(), expect[i].PK, pk)
+				require.Equal(s.T(), expect[i].SK, sk)
+				require.Equal(s.T(), expect[i].GSIPK, gsiPk)
+				require.Equal(s.T(), expect[i].GSISK, gsiSk)
 				i++
 			}
 		}
@@ -309,9 +293,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 	s.Run("with-sk", func() {
 		db := GetDB(s.T())
 		rows, err := db.QueryContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE sk = ?`, 3)
-		if !s.NoError(err) {
-			return
-		}
+		require.NoError(s.T(), err)
 		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
@@ -330,13 +312,11 @@ func (s *QueryTestSuite) Test_QueryContext() {
 					gsiSk string
 				)
 
-				if !s.NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk)) {
-					return
-				}
-				s.Equal(expect[i].PK, pk)
-				s.Equal(expect[i].SK, sk)
-				s.Equal(expect[i].GSIPK, gsiPk)
-				s.Equal(expect[i].GSISK, gsiSk)
+				require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+				require.Equal(s.T(), expect[i].PK, pk)
+				require.Equal(s.T(), expect[i].SK, sk)
+				require.Equal(s.T(), expect[i].GSIPK, gsiPk)
+				require.Equal(s.T(), expect[i].GSISK, gsiSk)
 				i++
 			}
 		}
@@ -344,9 +324,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 	s.Run("with-gsi-pk", func() {
 		db := GetDB(s.T())
 		rows, err := db.QueryContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE gsi_pk = ?`, "TestQueryTestSuite3")
-		if !s.NoError(err) {
-			return
-		}
+		require.NoError(s.T(), err)
 		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
@@ -365,13 +343,11 @@ func (s *QueryTestSuite) Test_QueryContext() {
 					gsiSk string
 				)
 
-				if !s.NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk)) {
-					return
-				}
-				s.Equal(expect[i].PK, pk)
-				s.Equal(expect[i].SK, sk)
-				s.Equal(expect[i].GSIPK, gsiPk)
-				s.Equal(expect[i].GSISK, gsiSk)
+				require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+				require.Equal(s.T(), expect[i].PK, pk)
+				require.Equal(s.T(), expect[i].SK, sk)
+				require.Equal(s.T(), expect[i].GSIPK, gsiPk)
+				require.Equal(s.T(), expect[i].GSISK, gsiSk)
 				i++
 			}
 		}
@@ -379,9 +355,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 	s.Run("with-gsi-pk-and-sk", func() {
 		db := GetDB(s.T())
 		rows, err := db.QueryContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE gsi_pk = ? AND gsi_sk = ?`, "TestQueryTestSuite3", "3")
-		if !s.NoError(err) {
-			return
-		}
+		require.NoError(s.T(), err)
 		expect := []TestTables{
 			{
 				PK:    "TestQueryTestSuite",
@@ -400,13 +374,11 @@ func (s *QueryTestSuite) Test_QueryContext() {
 					gsiSk string
 				)
 
-				if !s.NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk)) {
-					return
-				}
-				s.Equal(expect[i].PK, pk)
-				s.Equal(expect[i].SK, sk)
-				s.Equal(expect[i].GSIPK, gsiPk)
-				s.Equal(expect[i].GSISK, gsiSk)
+				require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+				require.Equal(s.T(), expect[i].PK, pk)
+				require.Equal(s.T(), expect[i].SK, sk)
+				require.Equal(s.T(), expect[i].GSIPK, gsiPk)
+				require.Equal(s.T(), expect[i].GSISK, gsiSk)
 				i++
 			}
 		}
@@ -417,9 +389,7 @@ func (s *QueryTestSuite) Test_Query() {
 	s.Run("full-scan", func() {
 		db := GetDB(s.T())
 		rows, err := db.Query(`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables"`)
-		if !s.NoError(err) {
-			return
-		}
+		require.NoError(s.T(), err)
 
 		expect := []TestTables{
 			{
@@ -463,13 +433,11 @@ func (s *QueryTestSuite) Test_Query() {
 					gsiSk string
 				)
 
-				if !s.NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk)) {
-					return
-				}
-				s.Equal(expect[i].PK, pk)
-				s.Equal(expect[i].SK, sk)
-				s.Equal(expect[i].GSIPK, gsiPk)
-				s.Equal(expect[i].GSISK, gsiSk)
+				require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+				require.Equal(s.T(), expect[i].PK, pk)
+				require.Equal(s.T(), expect[i].SK, sk)
+				require.Equal(s.T(), expect[i].GSIPK, gsiPk)
+				require.Equal(s.T(), expect[i].GSISK, gsiSk)
 				i++
 			}
 		}
@@ -477,16 +445,12 @@ func (s *QueryTestSuite) Test_Query() {
 }
 
 func (s *QueryTestSuite) Test_PrepareContext() {
-	s.Run("full-scan/Query", func() {
+	s.Run("Query", func() {
 		db := GetDB(s.T())
-		query, err := db.PrepareContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ?`)
-		if !s.NoError(err) {
-			return
-		}
-		rows, err := query.Query("TestQueryTestSuite")
-		if err != nil {
-			return
-		}
+		query, err := db.PrepareContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`)
+		require.NoError(s.T(), err)
+		rows, err := query.Query("TestQueryTestSuite", 1.0)
+		require.NoError(s.T(), err)
 
 		expect := []TestTables{
 			{
@@ -494,30 +458,6 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 				SK:    1.0,
 				GSIPK: "TestQueryTestSuite1",
 				GSISK: "1",
-			},
-			{
-				PK:    "TestQueryTestSuite",
-				SK:    2.0,
-				GSIPK: "TestQueryTestSuite2",
-				GSISK: "2",
-			},
-			{
-				PK:    "TestQueryTestSuite",
-				SK:    3,
-				GSIPK: "TestQueryTestSuite3",
-				GSISK: "3",
-			},
-			{
-				PK:    "TestQueryTestSuite",
-				SK:    4,
-				GSIPK: "TestQueryTestSuite4",
-				GSISK: "4",
-			},
-			{
-				PK:    "TestQueryTestSuite",
-				SK:    5,
-				GSIPK: "TestQueryTestSuite5",
-				GSISK: "5",
 			},
 		}
 		i := 0
@@ -530,27 +470,22 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 					gsiSk string
 				)
 
-				if !s.NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk)) {
-					return
-				}
-				s.Equal(expect[i].PK, pk)
-				s.Equal(expect[i].SK, sk)
-				s.Equal(expect[i].GSIPK, gsiPk)
-				s.Equal(expect[i].GSISK, gsiSk)
+				require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+				require.Equal(s.T(), expect[i].PK, pk)
+				require.Equal(s.T(), expect[i].SK, sk)
+				require.Equal(s.T(), expect[i].GSIPK, gsiPk)
+				require.Equal(s.T(), expect[i].GSISK, gsiSk)
 				i++
 			}
 		}
+		require.Equal(s.T(), 1, i)
 	})
-	s.Run("full-scan/QueryContext", func() {
+	s.Run("QueryContext", func() {
 		db := GetDB(s.T())
-		query, err := db.PrepareContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ?`)
-		if !s.NoError(err) {
-			return
-		}
-		rows, err := query.QueryContext(context.Background(), "TestQueryTestSuite")
-		if err != nil {
-			return
-		}
+		query, err := db.PrepareContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`)
+		require.NoError(s.T(), err)
+		rows, err := query.Query("TestQueryTestSuite", 1.0)
+		require.NoError(s.T(), err)
 
 		expect := []TestTables{
 			{
@@ -558,30 +493,6 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 				SK:    1.0,
 				GSIPK: "TestQueryTestSuite1",
 				GSISK: "1",
-			},
-			{
-				PK:    "TestQueryTestSuite",
-				SK:    2.0,
-				GSIPK: "TestQueryTestSuite2",
-				GSISK: "2",
-			},
-			{
-				PK:    "TestQueryTestSuite",
-				SK:    3,
-				GSIPK: "TestQueryTestSuite3",
-				GSISK: "3",
-			},
-			{
-				PK:    "TestQueryTestSuite",
-				SK:    4,
-				GSIPK: "TestQueryTestSuite4",
-				GSISK: "4",
-			},
-			{
-				PK:    "TestQueryTestSuite",
-				SK:    5,
-				GSIPK: "TestQueryTestSuite5",
-				GSISK: "5",
 			},
 		}
 		i := 0
@@ -594,30 +505,25 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 					gsiSk string
 				)
 
-				if !s.NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk)) {
-					return
-				}
-				s.Equal(expect[i].PK, pk)
-				s.Equal(expect[i].SK, sk)
-				s.Equal(expect[i].GSIPK, gsiPk)
-				s.Equal(expect[i].GSISK, gsiSk)
+				require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+				require.Equal(s.T(), expect[i].PK, pk)
+				require.Equal(s.T(), expect[i].SK, sk)
+				require.Equal(s.T(), expect[i].GSIPK, gsiPk)
+				require.Equal(s.T(), expect[i].GSISK, gsiSk)
 				i++
 			}
 		}
+		require.Equal(s.T(), i, 1)
 	})
 }
 
 func (s *QueryTestSuite) Test_Prepare() {
-	s.Run("full-scan/Query", func() {
+	s.Run("Query", func() {
 		db := GetDB(s.T())
 		query, err := db.Prepare(`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ?`)
-		if !s.NoError(err) {
-			return
-		}
+		require.NoError(s.T(), err)
 		rows, err := query.Query("TestQueryTestSuite")
-		if err != nil {
-			return
-		}
+		require.NoError(s.T(), err)
 
 		expect := []TestTables{
 			{
@@ -661,27 +567,21 @@ func (s *QueryTestSuite) Test_Prepare() {
 					gsiSk string
 				)
 
-				if !s.NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk)) {
-					return
-				}
-				s.Equal(expect[i].PK, pk)
-				s.Equal(expect[i].SK, sk)
-				s.Equal(expect[i].GSIPK, gsiPk)
-				s.Equal(expect[i].GSISK, gsiSk)
+				require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+				require.Equal(s.T(), expect[i].PK, pk)
+				require.Equal(s.T(), expect[i].SK, sk)
+				require.Equal(s.T(), expect[i].GSIPK, gsiPk)
+				require.Equal(s.T(), expect[i].GSISK, gsiSk)
 				i++
 			}
 		}
 	})
-	s.Run("full-scan/QueryContext", func() {
+	s.Run("QueryContext", func() {
 		db := GetDB(s.T())
 		query, err := db.PrepareContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ?`)
-		if !s.NoError(err) {
-			return
-		}
+		require.NoError(s.T(), err)
 		rows, err := query.QueryContext(context.Background(), "TestQueryTestSuite")
-		if err != nil {
-			return
-		}
+		require.NoError(s.T(), err)
 
 		expect := []TestTables{
 			{
@@ -725,13 +625,11 @@ func (s *QueryTestSuite) Test_Prepare() {
 					gsiSk string
 				)
 
-				if !s.NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk)) {
-					return
-				}
-				s.Equal(expect[i].PK, pk)
-				s.Equal(expect[i].SK, sk)
-				s.Equal(expect[i].GSIPK, gsiPk)
-				s.Equal(expect[i].GSISK, gsiSk)
+				require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+				require.Equal(s.T(), expect[i].PK, pk)
+				require.Equal(s.T(), expect[i].SK, sk)
+				require.Equal(s.T(), expect[i].GSIPK, gsiPk)
+				require.Equal(s.T(), expect[i].GSISK, gsiSk)
 				i++
 			}
 		}

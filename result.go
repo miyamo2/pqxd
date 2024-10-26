@@ -27,3 +27,23 @@ func (r pqxdResult) RowsAffected() (int64, error) {
 func newPqxdResult(affected int64) *pqxdResult {
 	return &pqxdResult{affected: affected}
 }
+
+// lazyResult is resolve the affected rows lazily
+type lazyResult struct {
+	getAffected func() (int64, error)
+}
+
+// LastInsertId See: driver.Result
+func (r lazyResult) LastInsertId() (int64, error) {
+	return 0, ErrNotSupported
+}
+
+// RowsAffected See: driver.Result
+func (r lazyResult) RowsAffected() (int64, error) {
+	return r.getAffected()
+}
+
+// newLazyResult returns new lazyResult
+func newLazyResult(getAffected func() (int64, error)) driver.Result {
+	return lazyResult{getAffected: getAffected}
+}

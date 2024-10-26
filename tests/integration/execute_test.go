@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/miyamo2/pqxd"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"testing"
 	"time"
@@ -36,13 +37,7 @@ func (s *ExecTestSuite) SetupSuite() {
 			_ = tb
 			return nil
 		}, retry.Attempts(5))
-	if err != nil {
-		s.Failf("failed to describe table, %s", err.Error())
-	}
-}
-
-func (s *ExecTestSuite) SetupSubTest() {
-	s.TearDownSubTest()
+	require.NoError(s.T(), err)
 }
 
 func (s *ExecTestSuite) TearDownSubTest() {
@@ -61,9 +56,7 @@ func (s *ExecTestSuite) TearDownSubTest() {
 			},
 			ExclusiveStartKey: lastEvaluatedKey,
 		})
-		if err != nil {
-			s.Failf("failed to query, %s", err.Error())
-		}
+		require.NoError(s.T(), err)
 		testData = append(testData, queryOutput.Items...)
 		lastEvaluatedKey = queryOutput.LastEvaluatedKey
 		if len(lastEvaluatedKey) == 0 {
@@ -80,9 +73,7 @@ func (s *ExecTestSuite) TearDownSubTest() {
 			TableName: aws.String("test_tables"),
 		}
 		_, err := s.client.DeleteItem(context.Background(), input)
-		if err != nil {
-			s.Failf("failed to delete item, %s", err.Error())
-		}
+		require.NoError(s.T(), err)
 	}
 }
 
@@ -90,15 +81,15 @@ func (s *ExecTestSuite) Test_ExecContext() {
 	s.Run("insert/common", func() {
 		db := GetDB(s.T())
 		result, err := db.ExecContext(context.Background(), `INSERT INTO "test_tables" VALUE {'pk': ?, 'sk': ?, 'gsi_pk': ?, 'gsi_sk': ?}`, "TestExecTestSuite", 1.0, "TestExecTestSuite1", "1")
-		s.NoError(err)
+		require.NoError(s.T(), err)
 
 		rowAffected, err := result.RowsAffected()
-		s.NoError(err)
-		s.Equal(int64(1), rowAffected)
+		require.NoError(s.T(), err)
+		require.Equal(s.T(), int64(1), rowAffected)
 
 		lastInsertedID, err := result.LastInsertId()
-		s.ErrorIs(err, pqxd.ErrNotSupported)
-		s.Equal(int64(0), lastInsertedID)
+		require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
+		require.Equal(s.T(), int64(0), lastInsertedID)
 
 		expect := []TestTables{
 			{
@@ -119,14 +110,12 @@ func (s *ExecTestSuite) Test_ExecContext() {
 				":pk": &types.AttributeValueMemberS{Value: "TestExecTestSuite"},
 			},
 		})
-		if err != nil {
-			s.Failf("failed to query, %s", err.Error())
-		}
-		s.Len(queryOutput.Items, 1)
+		require.NoError(s.T(), err)
+		require.Len(s.T(), queryOutput.Items, 1)
 
 		var actual []TestTables
 		attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-		s.Exactly(expect, actual)
+		require.Exactly(s.T(), expect, actual)
 	})
 
 	s.Run("update/common", func() {
@@ -139,15 +128,15 @@ func (s *ExecTestSuite) Test_ExecContext() {
 
 		db := GetDB(s.T())
 		result, err := db.ExecContext(context.Background(), `UPDATE "test_tables" SET gsi_pk=? SET gsi_sk=? WHERE pk=? AND sk=?`, "TestExecTestSuite2", "2", "TestExecTestSuite", 1.0)
-		s.NoError(err)
+		require.NoError(s.T(), err)
 
 		rowAffected, err := result.RowsAffected()
-		s.NoError(err)
-		s.Equal(int64(1), rowAffected)
+		require.NoError(s.T(), err)
+		require.Equal(s.T(), int64(1), rowAffected)
 
 		lastInsertedID, err := result.LastInsertId()
-		s.ErrorIs(err, pqxd.ErrNotSupported)
-		s.Equal(int64(0), lastInsertedID)
+		require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
+		require.Equal(s.T(), int64(0), lastInsertedID)
 
 		expect := []TestTables{
 			{
@@ -170,14 +159,12 @@ func (s *ExecTestSuite) Test_ExecContext() {
 				":sk": &types.AttributeValueMemberN{Value: "1.0"},
 			},
 		})
-		if err != nil {
-			s.Failf("failed to query, %s", err.Error())
-		}
-		s.Len(queryOutput.Items, 1)
+		require.NoError(s.T(), err)
+		require.Len(s.T(), queryOutput.Items, 1)
 
 		var actual []TestTables
 		attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-		s.Exactly(expect, actual)
+		require.Exactly(s.T(), expect, actual)
 	})
 
 	s.Run("delete/common", func() {
@@ -190,15 +177,15 @@ func (s *ExecTestSuite) Test_ExecContext() {
 
 		db := GetDB(s.T())
 		result, err := db.ExecContext(context.Background(), `DELETE FROM "test_tables" WHERE pk=? AND sk=?`, "TestExecTestSuite", 1.0)
-		s.NoError(err)
+		require.NoError(s.T(), err)
 
 		rowAffected, err := result.RowsAffected()
-		s.NoError(err)
-		s.Equal(int64(1), rowAffected)
+		require.NoError(s.T(), err)
+		require.Equal(s.T(), int64(1), rowAffected)
 
 		lastInsertedID, err := result.LastInsertId()
-		s.ErrorIs(err, pqxd.ErrNotSupported)
-		s.Equal(int64(0), lastInsertedID)
+		require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
+		require.Equal(s.T(), int64(0), lastInsertedID)
 
 		queryOutput, err := s.client.Query(context.Background(), &dynamodb.QueryInput{
 			TableName:              aws.String("test_tables"),
@@ -210,10 +197,8 @@ func (s *ExecTestSuite) Test_ExecContext() {
 				":pk": &types.AttributeValueMemberS{Value: "TestExecTestSuite"},
 			},
 		})
-		if err != nil {
-			s.Failf("failed to query, %s", err.Error())
-		}
-		s.Len(queryOutput.Items, 0)
+		require.NoError(s.T(), err)
+		require.Len(s.T(), queryOutput.Items, 0)
 	})
 }
 
@@ -221,15 +206,15 @@ func (s *ExecTestSuite) Test_Exec() {
 	s.Run("insert/common", func() {
 		db := GetDB(s.T())
 		result, err := db.Exec(`INSERT INTO "test_tables" VALUE {'pk': ?, 'sk': ?, 'gsi_pk': ?, 'gsi_sk': ?}`, "TestExecTestSuite", 1.0, "TestExecTestSuite1", "1")
-		s.NoError(err)
+		require.NoError(s.T(), err)
 
 		rowAffected, err := result.RowsAffected()
-		s.NoError(err)
-		s.Equal(int64(1), rowAffected)
+		require.NoError(s.T(), err)
+		require.Equal(s.T(), int64(1), rowAffected)
 
 		lastInsertedID, err := result.LastInsertId()
-		s.ErrorIs(err, pqxd.ErrNotSupported)
-		s.Equal(int64(0), lastInsertedID)
+		require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
+		require.Equal(s.T(), int64(0), lastInsertedID)
 
 		expect := []TestTables{
 			{
@@ -250,14 +235,12 @@ func (s *ExecTestSuite) Test_Exec() {
 				":pk": &types.AttributeValueMemberS{Value: "TestExecTestSuite"},
 			},
 		})
-		if err != nil {
-			s.Failf("failed to query, %s", err.Error())
-		}
-		s.Len(queryOutput.Items, 1)
+		require.NoError(s.T(), err)
+		require.Len(s.T(), queryOutput.Items, 1)
 
 		var actual []TestTables
 		attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-		s.Exactly(expect, actual)
+		require.Exactly(s.T(), expect, actual)
 	})
 
 	s.Run("update/common", func() {
@@ -270,15 +253,15 @@ func (s *ExecTestSuite) Test_Exec() {
 
 		db := GetDB(s.T())
 		result, err := db.Exec(`UPDATE "test_tables" SET gsi_pk=? SET gsi_sk=? WHERE pk=? AND sk=?`, "TestExecTestSuite2", "2", "TestExecTestSuite", 1.0)
-		s.NoError(err)
+		require.NoError(s.T(), err)
 
 		rowAffected, err := result.RowsAffected()
-		s.NoError(err)
-		s.Equal(int64(1), rowAffected)
+		require.NoError(s.T(), err)
+		require.Equal(s.T(), int64(1), rowAffected)
 
 		lastInsertedID, err := result.LastInsertId()
-		s.ErrorIs(err, pqxd.ErrNotSupported)
-		s.Equal(int64(0), lastInsertedID)
+		require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
+		require.Equal(s.T(), int64(0), lastInsertedID)
 
 		expect := []TestTables{
 			{
@@ -301,14 +284,12 @@ func (s *ExecTestSuite) Test_Exec() {
 				":sk": &types.AttributeValueMemberN{Value: "1.0"},
 			},
 		})
-		if err != nil {
-			s.Failf("failed to query, %s", err.Error())
-		}
-		s.Len(queryOutput.Items, 1)
+		require.NoError(s.T(), err)
+		require.Len(s.T(), queryOutput.Items, 1)
 
 		var actual []TestTables
 		attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-		s.Exactly(expect, actual)
+		require.Exactly(s.T(), expect, actual)
 	})
 
 	s.Run("delete/common", func() {
@@ -321,15 +302,15 @@ func (s *ExecTestSuite) Test_Exec() {
 
 		db := GetDB(s.T())
 		result, err := db.Exec(`DELETE FROM "test_tables" WHERE pk=? AND sk=?`, "TestExecTestSuite", 1.0)
-		s.NoError(err)
+		require.NoError(s.T(), err)
 
 		rowAffected, err := result.RowsAffected()
-		s.NoError(err)
-		s.Equal(int64(1), rowAffected)
+		require.NoError(s.T(), err)
+		require.Equal(s.T(), int64(1), rowAffected)
 
 		lastInsertedID, err := result.LastInsertId()
-		s.ErrorIs(err, pqxd.ErrNotSupported)
-		s.Equal(int64(0), lastInsertedID)
+		require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
+		require.Equal(s.T(), int64(0), lastInsertedID)
 
 		queryOutput, err := s.client.Query(context.Background(), &dynamodb.QueryInput{
 			TableName:              aws.String("test_tables"),
@@ -341,10 +322,8 @@ func (s *ExecTestSuite) Test_Exec() {
 				":pk": &types.AttributeValueMemberS{Value: "TestExecTestSuite"},
 			},
 		})
-		if err != nil {
-			s.Failf("failed to query, %s", err.Error())
-		}
-		s.Len(queryOutput.Items, 0)
+		require.NoError(s.T(), err)
+		require.Len(s.T(), queryOutput.Items, 0)
 	})
 }
 
@@ -352,18 +331,18 @@ func (s *ExecTestSuite) Test_PrepareContext() {
 	s.Run("insert/common", func() {
 		db := GetDB(s.T())
 		stmt, err := db.PrepareContext(context.Background(), `INSERT INTO "test_tables" VALUE {'pk': ?, 'sk': ?, 'gsi_pk': ?, 'gsi_sk': ?}`)
-		s.NoError(err)
+		require.NoError(s.T(), err)
 
 		result, err := stmt.ExecContext(context.Background(), "TestExecTestSuite", 1.0, "TestExecTestSuite1", "1")
-		s.NoError(err)
+		require.NoError(s.T(), err)
 
 		rowAffected, err := result.RowsAffected()
-		s.NoError(err)
-		s.Equal(int64(1), rowAffected)
+		require.NoError(s.T(), err)
+		require.Equal(s.T(), int64(1), rowAffected)
 
 		lastInsertedID, err := result.LastInsertId()
-		s.ErrorIs(err, pqxd.ErrNotSupported)
-		s.Equal(int64(0), lastInsertedID)
+		require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
+		require.Equal(s.T(), int64(0), lastInsertedID)
 
 		expect := []TestTables{
 			{
@@ -384,14 +363,12 @@ func (s *ExecTestSuite) Test_PrepareContext() {
 				":pk": &types.AttributeValueMemberS{Value: "TestExecTestSuite"},
 			},
 		})
-		if err != nil {
-			s.Failf("failed to query, %s", err.Error())
-		}
-		s.Len(queryOutput.Items, 1)
+		require.NoError(s.T(), err)
+		require.Len(s.T(), queryOutput.Items, 1)
 
 		var actual []TestTables
 		attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-		s.Exactly(expect, actual)
+		require.Exactly(s.T(), expect, actual)
 	})
 
 	s.Run("update/common", func() {
@@ -404,18 +381,18 @@ func (s *ExecTestSuite) Test_PrepareContext() {
 
 		db := GetDB(s.T())
 		stmt, err := db.PrepareContext(context.Background(), `UPDATE "test_tables" SET gsi_pk=? SET gsi_sk=? WHERE pk = ? AND sk = ?`)
-		s.NoError(err)
+		require.NoError(s.T(), err)
 
 		result, err := stmt.ExecContext(context.Background(), "TestExecTestSuite2", "2", "TestExecTestSuite", 1.0)
-		s.NoError(err)
+		require.NoError(s.T(), err)
 
 		rowAffected, err := result.RowsAffected()
-		s.NoError(err)
-		s.Equal(int64(1), rowAffected)
+		require.NoError(s.T(), err)
+		require.Equal(s.T(), int64(1), rowAffected)
 
 		lastInsertedID, err := result.LastInsertId()
-		s.ErrorIs(err, pqxd.ErrNotSupported)
-		s.Equal(int64(0), lastInsertedID)
+		require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
+		require.Equal(s.T(), int64(0), lastInsertedID)
 
 		expect := []TestTables{
 			{
@@ -438,14 +415,12 @@ func (s *ExecTestSuite) Test_PrepareContext() {
 				":sk": &types.AttributeValueMemberN{Value: "1.0"},
 			},
 		})
-		if err != nil {
-			s.Failf("failed to query, %s", err.Error())
-		}
-		s.Len(queryOutput.Items, 1)
+		require.NoError(s.T(), err)
+		require.Len(s.T(), queryOutput.Items, 1)
 
 		var actual []TestTables
 		attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-		s.Exactly(expect, actual)
+		require.Exactly(s.T(), expect, actual)
 	})
 
 	s.Run("delete/common", func() {
@@ -458,18 +433,18 @@ func (s *ExecTestSuite) Test_PrepareContext() {
 
 		db := GetDB(s.T())
 		stmt, err := db.PrepareContext(context.Background(), `DELETE FROM "test_tables" WHERE pk = ? AND sk = ?`)
-		s.NoError(err)
+		require.NoError(s.T(), err)
 
 		result, err := stmt.ExecContext(context.Background(), "TestExecTestSuite", 1.0)
-		s.NoError(err)
+		require.NoError(s.T(), err)
 
 		rowAffected, err := result.RowsAffected()
-		s.NoError(err)
-		s.Equal(int64(1), rowAffected)
+		require.NoError(s.T(), err)
+		require.Equal(s.T(), int64(1), rowAffected)
 
 		lastInsertedID, err := result.LastInsertId()
-		s.ErrorIs(err, pqxd.ErrNotSupported)
-		s.Equal(int64(0), lastInsertedID)
+		require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
+		require.Equal(s.T(), int64(0), lastInsertedID)
 
 		queryOutput, err := s.client.Query(context.Background(), &dynamodb.QueryInput{
 			TableName:              aws.String("test_tables"),
@@ -481,9 +456,7 @@ func (s *ExecTestSuite) Test_PrepareContext() {
 				":pk": &types.AttributeValueMemberS{Value: "TestExecTestSuite"},
 			},
 		})
-		if err != nil {
-			s.Failf("failed to query, %s", err.Error())
-		}
-		s.Len(queryOutput.Items, 0)
+		require.NoError(s.T(), err)
+		require.Len(s.T(), queryOutput.Items, 0)
 	})
 }

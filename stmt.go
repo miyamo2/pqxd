@@ -3,8 +3,6 @@ package pqxd
 import (
 	"context"
 	"database/sql/driver"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"go.uber.org/atomic"
 )
 
@@ -14,8 +12,11 @@ var (
 	_ driver.StmtQueryContext = (*statementQuery)(nil)
 )
 
-// getFetchClosure is a function that returns fetchClosure
-type getFetchClosure func(dynamodb.ExecuteStatementInput) fetchClosure
+// queryContext executes the prepared statement
+type queryContext func(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error)
+
+// execContext executes the prepared statement
+type execContext func(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error)
 
 // statementQuery is an implementation of driver.Stmt
 type statementQuery struct {
@@ -28,8 +29,8 @@ type statementQuery struct {
 	// numInput is the number of placeholders in the statement
 	numInput int
 
-	// getFetchClosure returns fetchClosure
-	getFetchClosure getFetchClosure
+	// queryContext executes the statement
+	queryContext func(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error)
 
 	// closed is a flag that indicates whether the statement is closed
 	closed atomic.Bool
@@ -68,44 +69,20 @@ func (s statementQuery) Query(args []driver.Value) (driver.Rows, error) {
 
 // QueryContext See: driver.StmtQueryContext
 func (s statementQuery) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
-	if err := s.connCloseCheckClosure(); err != nil {
-		s.closed.Store(true)
-		return nil, driver.ErrBadConn
-	}
-	if s.closed.Load() {
-		return nil, ErrStatementClosed
-	}
-	params, err := toPartiQLParameters(args)
-	if err != nil {
-		return nil, err
-	}
-	input := dynamodb.ExecuteStatementInput{
-		Statement:  &s.query,
-		Parameters: params,
-	}
-	fetch := s.getFetchClosure(input)
-	var items []map[string]types.AttributeValue
-	nt, err := fetch(ctx, nil, &items)
-	if err != nil {
-		return nil, err
-	}
-
-	return newRows(s.selectedList, nt, fetch, items), nil
+	return s.queryContext(ctx, s.query, args)
 }
 
 // newStatementQuery returns a new statementQuery
 func newStatementQuery(
 	query string,
-	selectedList []string,
 	numInput int,
-	getFetchClosure getFetchClosure,
+	queryContext queryContext,
 	connCloseCheckClosure func() error,
 ) *statementQuery {
 	return &statementQuery{
 		query:                 query,
-		selectedList:          selectedList,
 		numInput:              numInput,
-		getFetchClosure:       getFetchClosure,
+		queryContext:          queryContext,
 		closed:                *atomic.NewBool(false),
 		connCloseCheckClosure: connCloseCheckClosure,
 	}
@@ -122,11 +99,14 @@ type execClosure func(ctx context.Context, args []driver.NamedValue) (driver.Res
 
 // statementExec is an implementation of driver.Stmt
 type statementExec struct {
+	// query is a string of prepared statement
+	query string
+
 	// numInput is the number of placeholders in the statement
 	numInput int
 
-	// execClosure executes the statement
-	execClosure execClosure
+	// execContext executes the statement
+	execContext execContext
 
 	// closed is a flag that indicates whether the statement is closed
 	closed atomic.Bool
@@ -164,7 +144,7 @@ func (s statementExec) ExecContext(ctx context.Context, args []driver.NamedValue
 		s.closed.Store(true)
 		return nil, ErrStatementClosed
 	}
-	return s.execClosure(ctx, args)
+	return s.execContext(ctx, s.query, args)
 }
 
 func (s statementExec) Query(args []driver.Value) (driver.Rows, error) {
@@ -173,13 +153,15 @@ func (s statementExec) Query(args []driver.Value) (driver.Rows, error) {
 
 // newStatementExec returns a new statementExec
 func newStatementExec(
+	query string,
 	numInput int,
-	execClosure execClosure,
+	execContext execContext,
 	connCloseCheckClosure func() error,
 ) *statementExec {
 	return &statementExec{
+		query:                 query,
 		numInput:              numInput,
-		execClosure:           execClosure,
+		execContext:           execContext,
 		closed:                *atomic.NewBool(false),
 		connCloseCheckClosure: connCloseCheckClosure,
 	}

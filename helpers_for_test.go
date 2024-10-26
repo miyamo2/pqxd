@@ -104,7 +104,7 @@ func GetAllResultSet(t *testing.T, rows driver.Rows) ([][]map[string]types.Attri
 		for rs.NextResultSet() == nil {
 			resultSet := *rs.out.Load()
 			results = append(results, resultSet)
-			rs.outCursor.Store(uint32(len(resultSet) - 1))
+			rs.outCursor.Store(uint32(len(resultSet)))
 		}
 	}
 	return results, nil
