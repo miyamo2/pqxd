@@ -62,7 +62,7 @@ type ConnectorSetting struct{}
 type ConnectorOption func(*ConnectorSetting)
 
 // NewConnector creates a new connector with the given aws.Config and ConnectorOption.
-func NewConnector(awsConfig aws.Config, options ...ConnectorOption) *pqxdDriver {
+func NewConnector(awsConfig aws.Config, options ...ConnectorOption) driver.Connector {
 	setting := ConnectorSetting{}
 	for _, option := range options {
 		option(&setting)
