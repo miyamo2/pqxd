@@ -31,7 +31,7 @@ func Example() {
 	}
 }
 
-func Example_WithOpen() {
+func Example_withOpen() {
 	region := os.Getenv("AWS_REGION")
 	ak := os.Getenv("AWS_ACCESS_KEY_ID")
 	sk := os.Getenv("AWS_SECRET_ACCESS_KEY")
@@ -46,7 +46,7 @@ func Example_WithOpen() {
 	}
 }
 
-func Example_QueryContext() {
+func Example_queryContext() {
 	rows, err := db.QueryContext(context.Background(), `SELECT id, name FROM "users"`)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -80,7 +80,7 @@ func Example_QueryContext() {
 	}
 }
 
-func Example_QueryRowContext() {
+func Example_queryRowContext() {
 	var id, name string
 	err := db.QueryRowContext(context.Background(), `SELECT id, name FROM "users" WHERE id = ?`, 1).Scan(&id, &name)
 	if err != nil {
@@ -90,7 +90,7 @@ func Example_QueryRowContext() {
 	fmt.Printf("id: %s, name: %s\n", id, name)
 }
 
-func Example_ExecContext() {
+func Example_execContext() {
 	insertResult, err := db.Exec(`INSERT INTO "users" VALUE { "id": ?, "name": ? }`, "3", "Alice")
 	if err != nil {
 		fmt.Println(err.Error())
@@ -136,7 +136,7 @@ func Example_ExecContext() {
 	}
 }
 
-func Example_PrepareContext() {
+func Example_prepareContext() {
 	stmt, err := db.PrepareContext(context.Background(), `SELECT id, name FROM "users" WHERE id = ?`)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -175,7 +175,7 @@ func Example_PrepareContext() {
 	}
 }
 
-func Example_QueryInTransaction() {
+func Example_queryInTransaction() {
 	tx, err := db.BeginTx(context.Background(), nil)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -213,7 +213,7 @@ func Example_QueryInTransaction() {
 	fmt.Printf("id: %s, name: %s\n", id, name)
 }
 
-func Example_ExecInTransaction() {
+func Example_execInTransaction() {
 	tx, err := db.Begin()
 	if err != nil {
 		fmt.Println(err.Error())
