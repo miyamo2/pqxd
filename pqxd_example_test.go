@@ -260,3 +260,19 @@ func Example_execInTransaction() {
 		return
 	}
 }
+
+func ExampleNewConnector() {
+	awsConfig, err := config.LoadDefaultConfig(context.Background())
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	db := sql.OpenDB(pqxd.NewConnector(awsConfig))
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	if err := db.Ping(); err != nil {
+		fmt.Println(err.Error())
+	}
+}
