@@ -44,7 +44,8 @@ type transactionInOut struct {
 
 // transationStatementPublisher publishes statements in a transaction.
 type transactionStatementPublisher struct {
-	ch chan *transactionInOut
+	ch        chan *transactionInOut
+	closeOnce sync.Once
 }
 
 // publish publishes a statement.
@@ -54,7 +55,9 @@ func (p *transactionStatementPublisher) publish(inout *transactionInOut) {
 
 // close closes the channel.
 func (p *transactionStatementPublisher) close() {
-	close(p.ch)
+	p.closeOnce.Do(func() {
+		close(p.ch)
+	})
 }
 
 // transactionCommitter commits a transaction.
@@ -75,7 +78,9 @@ func (c *transactionCommitter) commit() {
 
 // close closes the channel.
 func (c *transactionCommitter) close() {
-	close(c.ch)
+	c.closeOnce.Do(func() {
+		close(c.ch)
+	})
 }
 
 // transactionRollbacker rolls back a transaction.

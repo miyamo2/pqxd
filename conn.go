@@ -206,15 +206,9 @@ func (c *connection) BeginTx(ctx context.Context, opts driver.TxOptions) (driver
 			select {
 			default:
 				// do nothing
-			case inout, ok := <-txStmtCh:
-				if !ok {
-					continue
-				}
+			case inout := <-txStmtCh:
 				inouts = append(inouts, inout)
-			case _, ok := <-commitCh:
-				if !ok {
-					continue
-				}
+			case <-commitCh:
 				var inputs []types.ParameterizedStatement
 				for _, inout := range inouts {
 					inputs = append(inputs, inout.input)
@@ -233,10 +227,7 @@ func (c *connection) BeginTx(ctx context.Context, opts driver.TxOptions) (driver
 					inouts[i].output = resp.Item
 				}
 				return
-			case _, ok := <-rollbackCh:
-				if !ok {
-					continue
-				}
+			case <-rollbackCh:
 				return
 			case <-ctx.Done():
 				return
