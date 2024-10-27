@@ -9,7 +9,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.15.12
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.36.2
 	github.com/google/go-cmp v0.6.0
-	github.com/joho/godotenv v1.5.1
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.5.0
 )
