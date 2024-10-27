@@ -64,8 +64,7 @@ jobs:
           staticcheck ./... | reviewdog -f=staticcheck -reporter=github-pr-check -level warning
 
       - name: Setup xc
-        run: |
-          go install github.com/joerdav/xc@latest
+        uses: joerdav/setup-xc@v0.0.3
 
       - name: Unit Test
         run: |
