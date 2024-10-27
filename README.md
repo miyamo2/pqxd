@@ -28,20 +28,22 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/miyamo2/pqxd"
+	"log"
 	"time"
 )
 
 func main() {
-	awsConfig, err := config.LoadDefaultConfig(context.Background())
+	ctx := context.Background()
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("ap-northeast-1"))
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	db := sql.OpenDB(pqxd.NewConnector(awsConfig))
+	db := sql.OpenDB(pqxd.NewConnector(cfg))
 	if db == nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	if err := db.Ping(); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -56,7 +58,7 @@ func main() {
 	for rows.NextResultSet() { // page feed with next token
 		for rows.Next() {
 			var (
-				id string
+				id   string
 				name string
 			)
 			if rows.Scan(&id, &name); err != nil {
@@ -174,7 +176,7 @@ defer cancel()
 rows, err := tx.QueryContext(ctx, `SELECT id, name FROM "users" WHERE "id" = ?`, "1")
 if err != nil {
     tx.Rollback()
-	return err
+    return err
 }
 
 ctx, cancel = context.WithTimeout(context.Background(), time.Second)
@@ -338,6 +340,107 @@ AWS_REGION=<aws region>
 
 ```go
 db, err := sql.Open(pqxd.DriverName, "AWS_REGION=ap-northeast-1;AWS_ACCESS_KEY_ID=AKIA...;AWS_SECRET_ACCESS_KEY=...;)
+```
+
+#### O11y
+
+##### New Relic
+
+```go
+package main
+
+import (
+	"context"
+	"database/sql"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/miyamo2/pqxd"
+	nraws "github.com/newrelic/go-agent/v3/integrations/nrawssdk-v2"
+	"log"
+)
+
+func main() {
+	ctx := context.Background()
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("ap-northeast-1"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	// Instrumenting New Relic
+	nraws.AppendMiddlewares(&cfg.APIOptions, nil)
+	
+	db := sql.OpenDB(pqxd.NewConnector(cfg))
+	if db == nil {
+		log.Fatal(err)
+	}
+	db.Ping()
+}
+```
+
+##### Datadog
+
+```go
+package main
+
+import (
+	"context"
+	"database/sql"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/miyamo2/pqxd"
+	awstrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/aws/aws-sdk-go-v2/aws"
+	"log"
+)
+
+func main() {
+	ctx := context.Background()
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("ap-northeast-1"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	// Instrumenting Datadog
+	awstrace.AppendMiddleware(&cfg)
+
+	db := sql.OpenDB(pqxd.NewConnector(cfg))
+	if db == nil {
+		log.Fatal(err)
+	}
+	db.Ping()
+}
+```
+
+##### AWS X-Ray
+
+```go
+package main
+
+import (
+	"context"
+	"database/sql"
+	"github.com/miyamo2/pqxd"
+	"log"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-xray-sdk-go/instrumentation/awsv2"
+	"github.com/aws/aws-xray-sdk-go/xray"
+)
+
+func main() {
+	ctx := context.Background()
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("ap-northeast-1"))
+	if err != nil {
+		log.Fatalf("unable to load SDK config, %v", err)
+	}
+	// Instrumenting X-Ray
+	awsv2.AWSV2Instrumentor(&cfg.APIOptions)
+
+	db := sql.OpenDB(pqxd.NewConnector(cfg))
+	if db == nil {
+		log.Fatal(err)
+	}
+	db.Ping()
+}
 ```
 
 ## Contributing
