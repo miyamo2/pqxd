@@ -159,6 +159,58 @@ if row.Scan(&id, &name); err != nil {
 fmt.Printf("id: %s, name: %d\n", id, name)
 ```
 
+##### With Transaction
+
+```go
+tx, err := db.Begin()
+if err != nil {
+    return err
+}
+
+ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+defer cancel()
+
+rows, err := tx.QueryContext(ctx, `SELECT id, name FROM "users" WHERE "id" = ?`, "1")
+if err != nil {
+    tx.Rollback()
+	return err
+}
+
+ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+defer cancel()
+
+row := tx.QueryRowContext(ctx, `SELECT id, name FROM "users" WHERE "id" = ?`, "2")
+
+// WARNING: Do not use `tx.Commit()` when using `SELECT` statement.
+//
+// Each `sql.Rows` or `sql.Row` is resolved 
+// the first time `rows.NextResultSet()`, `rows.Next()` or `row.Scan()` 
+// is performed within that transaction.
+// So, after the `rows.NextResultSet()`, `rows.Next()` or `row.Scan()` is performed,
+// the transaction is automatically committed.
+for rows.Next() {
+    var (
+        id string
+        name string
+    )
+    if err := rows.Scan(&id, &name); err != nil {
+        fmt.Printf("something happend. err: %s\n", err.Error())
+        continue
+    }
+    fmt.Printf("id: %s, name: %d\n", id, name)
+}
+
+var (
+    id string
+    name string
+)
+if err := row.Scan(&id, &name); err != nil {
+    fmt.Printf("something happend. err: %s\n", err.Error())
+    return
+}
+fmt.Printf("id: %s, name: %d\n", id, name)
+```
+
 #### `INSERT`/`UPDATE`/`DELETE`
 
 ```go
@@ -221,9 +273,7 @@ if affected != 1 {
 }
 ```
 
-#### With Transaction
-
-##### `INSERT`/`UPDATE`/`DELETE`
+##### With Transaction
 
 ```go
 tx, err := db.Begin()
@@ -264,52 +314,6 @@ if affected, err := updateResult.RowsAffected(); err != nil || affected != 1 {
 if affected, err := deleteResult.RowsAffected(); err != nil || affected != 1 {
     return err
 }
-```
-
-##### `SELECT`
-
-```go
-tx, err := db.Begin()
-if err != nil {
-    return err
-}
-
-ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-defer cancel()
-
-rows, err := tx.QueryContext(ctx, `SELECT id, name FROM "users" WHERE "id" = ?`, "1")
-if err != nil {
-    tx.Rollback()
-	return err
-}
-
-ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-defer cancel()
-
-row := tx.QueryRowContext(ctx, `SELECT id, name FROM "users" WHERE "id" = ?`, "2")
-
-// WARNING: Do not use `tx.Commit()` when using `SELECT` statement.
-for rows.Next() {
-    var (
-        id string
-        name string
-    )
-    if err := rows.Scan(&id, &name); err != nil {
-        fmt.Printf("something happend. err: %s\n", err.Error())
-        continue
-    }
-    fmt.Printf("id: %s, name: %d\n", id, name)
-}
-var (
-    id string
-    name string
-)
-
-if err := row.Scan(&id, &name); err != nil {
-    fmt.Printf("something happend. err: %s\n", err.Error())
-    return
-}
-fmt.Printf("id: %s, name: %d\n", id, name)
 ```
 
 #### Connection String
