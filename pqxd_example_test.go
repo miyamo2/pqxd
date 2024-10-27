@@ -91,7 +91,7 @@ func Example_queryRowContext() {
 }
 
 func Example_execContext() {
-	insertResult, err := db.Exec(`INSERT INTO "users" VALUE { "id": ?, "name": ? }`, "3", "Alice")
+	insertResult, err := db.Exec(`INSERT INTO "users" VALUE { 'id': ?, 'name': ? }`, "3", "Alice")
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -105,7 +105,7 @@ func Example_execContext() {
 		return
 	}
 
-	updateResult, err := db.Exec(`UPDATE "users" SET "name" = ? WHERE "id" = ?`, "Bob", "2")
+	updateResult, err := db.Exec(`UPDATE "users" SET "name" = ? WHERE id = ?`, "Bob", "2")
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -120,7 +120,7 @@ func Example_execContext() {
 		return
 	}
 
-	deleteResult, err := db.Exec(`DELETE FROM "users" WHERE "id" = ?`, "1")
+	deleteResult, err := db.Exec(`DELETE FROM "users" WHERE id = ?`, "1")
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -152,7 +152,7 @@ func Example_prepareContext() {
 	}
 	fmt.Printf("id: %s, name: %s\n", id, name)
 
-	stmt, err = db.PrepareContext(context.Background(), `INSERT INTO "users" VALUE { "id": ?, "name": ? }`)
+	stmt, err = db.PrepareContext(context.Background(), `INSERT INTO "users" VALUE { 'id': ?, 'name': ? }`)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -220,21 +220,21 @@ func Example_execInTransaction() {
 		return
 	}
 
-	insertResult, err := tx.Exec(`INSERT INTO "users" VALUE { "id": ?, "name": ? }`, "3", "Alice")
+	insertResult, err := tx.Exec(`INSERT INTO "users" VALUE { 'id': ?, 'name': ? }`, "3", "Alice")
 	if err != nil {
 		fmt.Println(err.Error())
 		tx.Rollback()
 		return
 	}
 
-	updateResult, err := tx.Exec(`UPDATE "users" SET "name" = ? WHERE "id" = ?`, "Bob", "2")
+	updateResult, err := tx.Exec(`UPDATE "users" SET "name" = ? WHERE id = ?`, "Bob", "2")
 	if err != nil {
 		fmt.Println(err.Error())
 		tx.Rollback()
 		return
 	}
 
-	deleteResult, err := tx.Exec(`DELETE FROM "users" WHERE "id" = ?`, "1")
+	deleteResult, err := tx.Exec(`DELETE FROM "users" WHERE id = ?`, "1")
 	if err != nil {
 		fmt.Println(err.Error())
 		tx.Rollback()

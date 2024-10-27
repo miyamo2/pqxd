@@ -101,7 +101,7 @@ for rows.NextResultSet() { // page feed with next token
 ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 defer cancel()
 
-row := db.QueryRowContext(ctx, `SELECT id, name FROM "users" WHERE "id" = ?`, "1")
+row := db.QueryRowContext(ctx, `SELECT id, name FROM "users" WHERE id = ?`, "1")
 var (
     id string
     name string
@@ -119,7 +119,7 @@ fmt.Printf("id: %s, name: %d\n", id, name)
 ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 defer cancel()
 
-row := db.QueryRowContext(ctx, `SELECT id, name FROM "users"."gsi_pk-gsi-sk_index" WHERE "gsi_pk" = ? AND "gsi_sk" = ?`, "foo", "bar")
+row := db.QueryRowContext(ctx, `SELECT id, name FROM "users"."gsi_pk-gsi-sk_index" WHERE gsi_pk = ? AND gsi_sk = ?`, "foo", "bar")
 
 var (
     id string
@@ -138,7 +138,7 @@ fmt.Printf("id: %s, name: %d\n", id, name)
 ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 defer cancel()
 
-stmt, err := db.PrepareContext(ctx, `SELECT id, name FROM "users" WHERE "id" = ?`)
+stmt, err := db.PrepareContext(ctx, `SELECT id, name FROM "users" WHERE id = ?`)
 if err != nil {
     fmt.Printf("something happend. err: %s\n", err.Error())
     return
@@ -173,7 +173,7 @@ if err != nil {
 ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 defer cancel()
 
-rows, err := tx.QueryContext(ctx, `SELECT id, name FROM "users" WHERE "id" = ?`, "1")
+rows, err := tx.QueryContext(ctx, `SELECT id, name FROM "users" WHERE id = ?`, "1")
 if err != nil {
     tx.Rollback()
     return err
@@ -182,7 +182,7 @@ if err != nil {
 ctx, cancel = context.WithTimeout(context.Background(), time.Second)
 defer cancel()
 
-row := tx.QueryRowContext(ctx, `SELECT id, name FROM "users" WHERE "id" = ?`, "2")
+row := tx.QueryRowContext(ctx, `SELECT id, name FROM "users" WHERE id = ?`, "2")
 
 // WARNING: Do not use `tx.Commit()` when using `SELECT` statement.
 //
@@ -217,7 +217,7 @@ fmt.Printf("id: %s, name: %d\n", id, name)
 #### `INSERT`/`UPDATE`/`DELETE`
 
 ```go
-insertResult, err := db.Exec(`INSERT INTO "users" VALUE { "id": ?, "name": ? }`, "3", "Alice")
+insertResult, err := db.Exec(`INSERT INTO "users" VALUE { 'id': ?, 'name': ? }`, "3", "Alice")
 if err != nil {
     return err
 }
@@ -229,7 +229,7 @@ if affected != 1 {
     return fmt.Errorf("expected 1 row affected, got %d", affected)
 }
 
-updateResult, err := db.Exec(`UPDATE "users" SET "name" = ? WHERE "id" = ?`, "Bob", "2")
+updateResult, err := db.Exec(`UPDATE "users" SET name = ? WHERE id = ?`, "Bob", "2")
 if err != nil {
     return err
 }
@@ -241,7 +241,7 @@ if affected != 1 {
     return fmt.Errorf("expected 1 row affected, got %d", affected)
 }
 
-deleteResult, err := db.Exec(`DELETE FROM "users" WHERE "id" = ?`, "1")
+deleteResult, err := db.Exec(`DELETE FROM "users" WHERE id = ?`, "1")
 if err != nil {
     return err
 }
@@ -257,7 +257,7 @@ if affected != 1 {
 ##### With Prepared Statement
 
 ```go
-stmt, err := db.Prepare(`INSERT INTO "users" VALUE { "id": ?, "name": ? }`)
+stmt, err := db.Prepare(`INSERT INTO "users" VALUE { 'id': ?, 'name': ? }`)
 if err != nil {
     return err
 }
@@ -284,19 +284,19 @@ if err != nil {
     return err
 }
 
-insertResult, err = tx.Exec(`INSERT INTO "users" VALUE { "id": ?, "name": ? }`, "3", "Alice")
+insertResult, err := tx.Exec(`INSERT INTO "users" VALUE { 'id': ?, 'name': ? }`, "3", "Alice")
 if err != nil {
     tx.Rollback()
     return err
 }
 
-updateResult, err = tx.Exec(`UPDATE "users" SET "name" = ? WHERE "id" = ?`, "Bob", "2")
+updateResult, err := tx.Exec(`UPDATE "users" SET name = ? WHERE id = ?`, "Bob", "2")
 if err != nil {
     tx.Rollback()
     return err
 }
 
-deleteResult, err = tx.Exec(`DELETE FROM "users" WHERE "id" = ?`, "1")
+deleteResult, err := tx.Exec(`DELETE FROM "users" WHERE id = ?`, "1")
 if err != nil {
     tx.Rollback()
     return err
@@ -339,7 +339,7 @@ AWS_REGION=<aws region>
 | `ENDPOINT`              | Endpoint of DynamoDB. Used to connect locally to an emulator or to a DynamoDB compatible interface.                                                                                                                                              |
 
 ```go
-db, err := sql.Open(pqxd.DriverName, "AWS_REGION=ap-northeast-1;AWS_ACCESS_KEY_ID=AKIA...;AWS_SECRET_ACCESS_KEY=...;)
+db, err := sql.Open(pqxd.DriverName, "AWS_REGION=ap-northeast-1;AWS_ACCESS_KEY_ID=AKIA...;AWS_SECRET_ACCESS_KEY=...;")
 ```
 
 #### O11y
