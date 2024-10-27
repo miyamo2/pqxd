@@ -12,9 +12,11 @@ docker compose up -d
 
 ### setup:table
 
-requires: setup:dynamodb
-Inputs: DYNAMODB_ENDPOINT, AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
-Environment: DYNAMODB_ENDPOINT=http://localhost:4566, AWS_REGION=ap-northeast-1, AWS_ACCESS_KEY_ID=ABC1234567890, AWS_SECRET_ACCESS_KEY=ABC1234567890
+requires: setup:dynamodb  
+
+Inputs: DYNAMODB_ENDPOINT, AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY  
+
+Environment: DYNAMODB_ENDPOINT=http://localhost:4566, AWS_REGION=ap-northeast-1, AWS_ACCESS_KEY_ID=ABC1234567890, AWS_SECRET_ACCESS_KEY=ABC1234567890  
 
 ```sh
 TABLES=$(aws dynamodb list-tables --endpoint-url $DYNAMODB_ENDPOINT --output json --query 'TableNames')
@@ -40,8 +42,10 @@ aws dynamodb create-table --cli-input-json file://testdata/table-def.json --endp
 
 ### test
 
-requires: setup:table
-Inputs: DYNAMODB_ENDPOINT, AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+requires: setup:dynamodb  
+
+Inputs: DYNAMODB_ENDPOINT, AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY  
+
 Environment: DYNAMODB_ENDPOINT=http://localhost:4566, AWS_REGION=ap-northeast-1, AWS_ACCESS_KEY_ID=ABC1234567890, AWS_SECRET_ACCESS_KEY=ABC1234567890
 
 ```sh
