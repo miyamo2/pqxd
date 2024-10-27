@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"github.com/avast/retry-go"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -11,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"testing"
-	"time"
 )
 
 func TestTransactionTestSuite(t *testing.T) {
@@ -22,23 +20,6 @@ func TestTransactionTestSuite(t *testing.T) {
 type QueryTransactionTestSuite struct {
 	suite.Suite
 	client *dynamodb.Client
-}
-
-func (s *QueryTransactionTestSuite) SetupSuite() {
-	err := retry.Do(
-		func() error {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			defer cancel()
-			tb, err := s.client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
-				TableName: aws.String("test_tables"),
-			})
-			if err != nil {
-				return err
-			}
-			_ = tb
-			return nil
-		}, retry.Attempts(5))
-	require.NoError(s.T(), err)
 }
 
 func (s *QueryTransactionTestSuite) testData() []map[string]types.AttributeValue {
@@ -1256,27 +1237,6 @@ func (s *QueryTransactionTestSuite) Test_Begin_PrepareContext() {
 type ExecTransactionTestSuite struct {
 	suite.Suite
 	client *dynamodb.Client
-}
-
-func (s *ExecTransactionTestSuite) SetupSuite() {
-	err := retry.Do(
-		func() error {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			defer cancel()
-			tb, err := s.client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
-				TableName: aws.String("test_tables"),
-			})
-			if err != nil {
-				return err
-			}
-			_ = tb
-			return nil
-		}, retry.Attempts(5))
-	require.NoError(s.T(), err)
-}
-
-func (s *ExecTransactionTestSuite) SetupSubTest() {
-	s.TearDownSubTest()
 }
 
 func (s *ExecTransactionTestSuite) TearDownSubTest() {

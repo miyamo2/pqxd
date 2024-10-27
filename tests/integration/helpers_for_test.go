@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"github.com/avast/retry-go"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -11,6 +12,7 @@ import (
 	"github.com/miyamo2/pqxd"
 	"os"
 	"testing"
+	"time"
 )
 
 var (
@@ -38,11 +40,21 @@ func init() {
 	client = dynamodb.NewFromConfig(config)
 
 	db = sql.OpenDB(pqxd.NewConnector(config))
-	// var err error
-	// db, err = sql.Open(pqxd.DriverName, fmt.Sprintf("AWS_REGION=%s;AWS_ACCESS_KEY_ID=%s;AWS_SECRET_ACCESS_KEY=%s;ENDPOINT=%s", region, ak, sk, endpoint))
-	//if err != nil {
-	//	panic(fmt.Sprintf("failed to open database, got error %v", err))
-	//}
+
+	err := retry.Do(
+		func() error {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			tb, err := client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
+				TableName: aws.String("test_tables"),
+			})
+			if err != nil {
+				return err
+			}
+			_ = tb
+			return nil
+		}, retry.Attempts(10))
+	panic(err)
 }
 
 func GetDB(t *testing.T) *sql.DB {

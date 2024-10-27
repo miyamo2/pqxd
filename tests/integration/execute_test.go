@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"github.com/avast/retry-go"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -11,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"testing"
-	"time"
 )
 
 type ExecTestSuite struct {
@@ -21,23 +19,6 @@ type ExecTestSuite struct {
 
 func TestExecTestSuite(t *testing.T) {
 	suite.Run(t, &ExecTestSuite{client: GetClient(t)})
-}
-
-func (s *ExecTestSuite) SetupSuite() {
-	err := retry.Do(
-		func() error {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			defer cancel()
-			tb, err := s.client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
-				TableName: aws.String("test_tables"),
-			})
-			if err != nil {
-				return err
-			}
-			_ = tb
-			return nil
-		}, retry.Attempts(5))
-	require.NoError(s.T(), err)
 }
 
 func (s *ExecTestSuite) TearDownSubTest() {

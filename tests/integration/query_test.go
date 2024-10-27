@@ -2,14 +2,12 @@ package integration
 
 import (
 	"context"
-	"github.com/avast/retry-go"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"testing"
-	"time"
 )
 
 type QueryTestSuite struct {
@@ -19,25 +17,6 @@ type QueryTestSuite struct {
 
 func TestQueryTestSuite(t *testing.T) {
 	suite.Run(t, &QueryTestSuite{client: GetClient(t)})
-}
-
-func (s *QueryTestSuite) SetupSuite() {
-	err := retry.Do(
-		func() error {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			defer cancel()
-			tb, err := s.client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
-				TableName: aws.String("test_tables"),
-			})
-			if err != nil {
-				return err
-			}
-			_ = tb
-			return nil
-		}, retry.Attempts(5))
-	if err != nil {
-		s.Failf("failed to describe table, %s", err.Error())
-	}
 }
 
 func (s *QueryTestSuite) testData() []map[string]types.AttributeValue {
