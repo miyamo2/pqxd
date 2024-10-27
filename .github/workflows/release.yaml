@@ -10,10 +10,11 @@ permissions: write-all
 jobs:
   release:
     runs-on: ubuntu-latest
-    dynamodb-local:
-      image: amazon/dynamodb-local:latest
-      ports:
-        - 4566:4566
+    services:
+      dynamodb-local:
+        image: amazon/dynamodb-local:latest
+        ports:
+          - 4566:4566
     env:
       GO_VERSION: "1.23.0"
       AWS_ACCESS_KEY_ID: ABC1234567890
