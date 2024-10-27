@@ -1,6 +1,7 @@
 # pqxd
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/miyamo2/pqxd.svg)](https://pkg.go.dev/github.com/miyamo2/pqxd)
+[![CI](https://github.com/miyamo2/pqxd/actions/workflows/ci.yaml/badge.svg)](https://github.com/miyamo2/pqxd/actions/workflows/ci.yaml)
 [![GitHub go.mod Go version (subdirectory of monorepo)](https://img.shields.io/github/go-mod/go-version/miyamo2/pqxd?logo=go)](https://img.shields.io/github/go-mod/go-version/miyamo2/pqxd?logo=go)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/miyamo2/pqxd)](https://img.shields.io/github/v/release/miyamo2/pqxd)
 [![Go Report Card](https://goreportcard.com/badge/github.com/miyamo2/pqxd)](https://goreportcard.com/report/github.com/miyamo2/pqxd)
