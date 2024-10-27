@@ -5,12 +5,3 @@ services:
       SERVICES: dynamodb
     ports:
       - 4566:4566
-  dynamodb-admin:
-    container_name: dynamodb-admin
-    image: aaronshaf/dynamodb-admin:latest
-    environment:
-      - DYNAMO_ENDPOINT=localstack:4566
-    ports:
-      - 4567:4567
-    depends_on:
-      - localstack

@@ -6,17 +6,15 @@ We recommend that this section be run with [xc](https://github.com/joerdav/xc)
 
 ### setup:dynamodb
 
-Inputs: TYPE
-Environment: TYPE=localstack
 ```sh
-docker compose -f docker-compose-$TYPE.yaml up -d 
+docker compose -f docker-compose.yaml up -d 
 ```
 
 ### setup:table
 
 requires: setup:dynamodb
 Inputs: DYNAMODB_ENDPOINT
-Environment: DYNAMODB_ENDPOINT=http://localhost:8000
+Environment: DYNAMODB_ENDPOINT=http://localhost:4566
 
 ```sh
 TABLES=$(aws dynamodb list-tables --endpoint-url $DYNAMODB_ENDPOINT --output json --query 'TableNames')
