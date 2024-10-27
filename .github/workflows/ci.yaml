@@ -26,12 +26,12 @@ jobs:
         env:
           SERVICES: dynamodb
         ports:
-          - 8000:8000
+          - 4566:4566
     env:
       AWS_ACCESS_KEY_ID: ABC1234567890
       AWS_SECRET_ACCESS_KEY: ABC1234567890
       AWS_REGION: ap-northeast-1
-      DYNAMODB_ENDPOINT: http://127.0.0.1:8000
+      DYNAMODB_ENDPOINT: http://127.0.0.1:4566
 
     steps:
       - uses: Kesin11/actions-timeline@v2
