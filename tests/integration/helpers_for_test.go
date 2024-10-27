@@ -54,7 +54,9 @@ func init() {
 			_ = tb
 			return nil
 		}, retry.Attempts(10))
-	panic(err)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func GetDB(t *testing.T) *sql.DB {
