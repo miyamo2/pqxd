@@ -42,7 +42,7 @@ aws dynamodb create-table --cli-input-json file://testdata/table-def.json --endp
 
 ### test
 
-requires: setup:dynamodb  
+requires: setup:table  
 
 Inputs: DYNAMODB_ENDPOINT, AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY  
 
