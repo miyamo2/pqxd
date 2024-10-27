@@ -11,8 +11,10 @@ jobs:
   release:
     runs-on: ubuntu-latest
     services:
-      dynamodb-local:
-        image: amazon/dynamodb-local:latest
+      localstack:
+        image: localstack/localstack:latest
+        env:
+          SERVICES: dynamodb
         ports:
           - 8000:8000
     env:
