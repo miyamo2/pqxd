@@ -14,7 +14,7 @@ docker compose -f docker-compose.yaml up -d
 
 requires: setup:dynamodb
 Inputs: DYNAMODB_ENDPOINT
-Environment: DYNAMODB_ENDPOINT=http://localhost:4566
+Environment: DYNAMODB_ENDPOINT=http://127.0.0.1:4566
 
 ```sh
 TABLES=$(aws dynamodb list-tables --endpoint-url $DYNAMODB_ENDPOINT --output json --query 'TableNames')
