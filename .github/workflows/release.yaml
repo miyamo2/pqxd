@@ -10,8 +10,16 @@ permissions: write-all
 jobs:
   release:
     runs-on: ubuntu-latest
+    dynamodb-local:
+      image: amazon/dynamodb-local:latest
+      ports:
+        - 4566:4566
     env:
       GO_VERSION: "1.23.0"
+      AWS_ACCESS_KEY_ID: ABC1234567890
+      AWS_SECRET_ACCESS_KEY: ABC1234567890
+      AWS_DEFAULT_REGION: ap-northeast-1
+      DYNAMODB_ENDPOINT: http://127.0.0.1:4566
 
     steps:
       - uses: Kesin11/actions-timeline@v2
@@ -25,17 +33,19 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
-      - name: Setup xc
-        run: |
-          go install github.com/joerdav/xc@latest
-
       - name: Unit Test
         run: |
-          xc test:unit
+          go test -v -coverpkg='github.com/miyamo2/pqxd' -coverprofile=coverage.out
+
+      - name: Setup Table
+        working-directory: tests/integration
+        run: |
+          aws dynamodb create-table --cli-input-json file://testdata/table-def.json --endpoint-url ${{ env.DYNAMODB_ENDPOINT }} --region ${{ env.AWS_DEFAULT_REGION }} 
 
       - name: Integration Test
+        working-directory: tests/integration
         run: |
-          xc test:integration
+          go test -v -coverpkg='github.com/miyamo2/pqxd' -coverprofile=coverage.out
 
       - name: Extract Version
         id: versioning

@@ -20,13 +20,10 @@ jobs:
     strategy:
       matrix:
         goversion: ["1.23.0"]
-    services:
-      localstack:
-        image: localstack/localstack:latest
-        env:
-          SERVICES: dynamodb
-        ports:
-          - 4566:4566
+    dynamodb-local:
+      image: amazon/dynamodb-local:latest
+      ports:
+        - 4566:4566
     env:
       AWS_ACCESS_KEY_ID: ABC1234567890
       AWS_SECRET_ACCESS_KEY: ABC1234567890
