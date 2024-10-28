@@ -1,4 +1,4 @@
-# pqxd
+# pqxd - [database/sql](https://golang.org/pkg/database/sql/)  driver for [PartiQL in DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.html)
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/miyamo2/pqxd.svg)](https://pkg.go.dev/github.com/miyamo2/pqxd)
 [![CI](https://github.com/miyamo2/pqxd/actions/workflows/ci.yaml/badge.svg)](https://github.com/miyamo2/pqxd/actions/workflows/ci.yaml)
@@ -6,8 +6,6 @@
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/miyamo2/pqxd)](https://img.shields.io/github/v/release/miyamo2/pqxd)
 [![Go Report Card](https://goreportcard.com/badge/github.com/miyamo2/pqxd)](https://goreportcard.com/report/github.com/miyamo2/pqxd)
 [![GitHub License](https://img.shields.io/github/license/miyamo2/pqxd?&color=blue)](https://img.shields.io/github/license/miyamo2/pqxd?&color=blue)
-
-pqxd, the `database/sql` driver for [PartiQL in DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.html).
 
 ## Quick Start
 
@@ -73,13 +71,14 @@ func main() {
 
 #### `SELECT`
 
+> [!TIP]
+> If `*` is specified in the select column list, 
+> the results of the rows are automatically sorted by column name(asc).
+
 ##### Scan
 
 ```go
-ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-defer cancel()
-
-rows, err := db.QueryContext(ctx, `SELECT id, name FROM "users"`)
+rows, err := db.QueryContext(context.Background(), `SELECT id, name FROM "users"`)
 for rows.NextResultSet() { // page feed with next token
     for rows.Next() {
         var (
@@ -98,10 +97,7 @@ for rows.NextResultSet() { // page feed with next token
 ##### GetItem
 
 ```go
-ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-defer cancel()
-
-row := db.QueryRowContext(ctx, `SELECT id, name FROM "users" WHERE id = ?`, "1")
+row := db.QueryRowContext(context.Background(), `SELECT id, name FROM "users" WHERE id = ?`, "1")
 var (
     id string
     name string
@@ -116,10 +112,7 @@ fmt.Printf("id: %s, name: %d\n", id, name)
 ##### GetItem with Global Secondary Index
 
 ```go
-ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-defer cancel()
-
-row := db.QueryRowContext(ctx, `SELECT id, name FROM "users"."gsi_pk-gsi-sk_index" WHERE gsi_pk = ? AND gsi_sk = ?`, "foo", "bar")
+row := db.QueryRowContext(context.Background(), `SELECT id, name FROM "users"."gsi_pk-gsi-sk_index" WHERE gsi_pk = ? AND gsi_sk = ?`, "foo", "bar")
 
 var (
     id string
@@ -135,8 +128,7 @@ fmt.Printf("id: %s, name: %d\n", id, name)
 ##### With Prepared Statement
 
 ```go
-ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-defer cancel()
+ctx := context.Background()
 
 stmt, err := db.PrepareContext(ctx, `SELECT id, name FROM "users" WHERE id = ?`)
 if err != nil {
@@ -170,17 +162,13 @@ if err != nil {
     return err
 }
 
-ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-defer cancel()
+ctx := context.Background()
 
 rows, err := tx.QueryContext(ctx, `SELECT id, name FROM "users" WHERE id = ?`, "1")
 if err != nil {
     tx.Rollback()
     return err
 }
-
-ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-defer cancel()
 
 row := tx.QueryRowContext(ctx, `SELECT id, name FROM "users" WHERE id = ?`, "2")
 
@@ -212,6 +200,39 @@ if err := row.Scan(&id, &name); err != nil {
     return
 }
 fmt.Printf("id: %s, name: %d\n", id, name)
+```
+
+##### `RETURNING`
+
+`pqxd` supports the `RETURNING` clause.
+
+```go
+row := db.QueryRowContext(context.Background(), `UPDATE "users" SET name = ? SET nickname = ? WHERE id = ? RETURNING MODIFIED OLD *`, "David", "Dave", "3")
+
+var name, nickname sql.NullString
+if err := row.Scan(&name, &nickname); err != nil {
+    fmt.Printf("something happend. err: %s\n", err.Error())
+    return
+}
+if name.Valid {
+    fmt.Printf("name: %s\n", name.String)
+}
+if nickname.Valid {
+    fmt.Printf("nickname: %s\n", nickname.String)
+}
+```
+
+And provides proprietary syntax for specifying a column list instead of `*`.
+
+```go
+row := db.QueryRowContext(context.Background(), `UPDATE "users" SET name = ? SET nickname = ? WHERE id = ? RETURNING ALL OLD id`, "Robert", "Bob", "2")
+
+var id string
+if err := row.Scan(&id); err != nil {
+    fmt.Printf("something happend. err: %s\n", err.Error())
+    return
+}
+fmt.Printf("id: %s\n", id)
 ```
 
 #### `INSERT`/`UPDATE`/`DELETE`

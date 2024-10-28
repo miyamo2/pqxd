@@ -126,6 +126,101 @@ func (s *QueryTestSuite) TearDownSubTest() {
 	}
 }
 
+func (s *QueryTestSuite) Test_QueryRowContext() {
+	s.Run("with-pk-and-sk", func() {
+		db := GetDB(s.T())
+		row := db.QueryRowContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`, "TestQueryTestSuite", 1.0)
+
+		expect := TestTables{
+			PK:    "TestQueryTestSuite",
+			SK:    1.0,
+			GSIPK: "TestQueryTestSuite1",
+			GSISK: "1",
+		}
+
+		var (
+			pk    string
+			sk    float64
+			gsiPk string
+			gsiSk string
+		)
+
+		require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+		require.Equal(s.T(), expect.PK, pk)
+		require.Equal(s.T(), expect.SK, sk)
+		require.Equal(s.T(), expect.GSIPK, gsiPk)
+		require.Equal(s.T(), expect.GSISK, gsiSk)
+	})
+	s.Run("with-gsi", func() {
+		db := GetDB(s.T())
+		row := db.QueryRowContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables"."gsi_pk-gsi_sk-index" WHERE gsi_pk = ? AND gsi_sk = ?`, "TestQueryTestSuite3", "3")
+
+		expect := TestTables{
+			PK:    "TestQueryTestSuite",
+			SK:    3,
+			GSIPK: "TestQueryTestSuite3",
+			GSISK: "3",
+		}
+
+		var (
+			pk    string
+			sk    float64
+			gsiPk string
+			gsiSk string
+		)
+
+		require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+		require.Equal(s.T(), expect.PK, pk)
+		require.Equal(s.T(), expect.SK, sk)
+		require.Equal(s.T(), expect.GSIPK, gsiPk)
+		require.Equal(s.T(), expect.GSISK, gsiSk)
+	})
+	s.Run("update-returning", func() {
+		db := GetDB(s.T())
+		row := db.QueryRowContext(context.Background(), `UPDATE "test_tables" SET gsi_pk = ? SET gsi_sk = ? WHERE pk = ? AND sk = ? RETURNING ALL OLD pk, gsi_sk, sk`, "TestQueryTestSuite3", "3.5", "TestQueryTestSuite", 3)
+
+		expect := TestTables{
+			PK:    "TestQueryTestSuite",
+			SK:    3,
+			GSIPK: "TestQueryTestSuite3",
+			GSISK: "3",
+		}
+
+		var (
+			pk    string
+			gsiSk string
+			sk    float64
+		)
+
+		require.NoError(s.T(), row.Scan(&pk, &gsiSk, &sk))
+		require.Equal(s.T(), expect.PK, pk)
+		require.Equal(s.T(), expect.SK, sk)
+		require.Equal(s.T(), expect.GSISK, gsiSk)
+	})
+	s.Run("delete-returning", func() {
+		db := GetDB(s.T())
+		row := db.QueryRowContext(context.Background(), `DELETE FROM "test_tables" WHERE pk = ? AND sk = ? RETURNING ALL OLD pk, gsi_sk, sk`, "TestQueryTestSuite", 3)
+
+		expect := TestTables{
+			PK:    "TestQueryTestSuite",
+			SK:    3,
+			GSIPK: "TestQueryTestSuite3",
+			GSISK: "3",
+		}
+
+		var (
+			pk    string
+			gsiSk string
+			sk    float64
+		)
+
+		require.NoError(s.T(), row.Scan(&pk, &gsiSk, &sk))
+		require.Equal(s.T(), expect.PK, pk)
+		require.Equal(s.T(), expect.SK, sk)
+		require.Equal(s.T(), expect.GSISK, gsiSk)
+	})
+}
+
 func (s *QueryTestSuite) Test_QueryContext() {
 	s.Run("full-scan", func() {
 		db := GetDB(s.T())
@@ -362,6 +457,64 @@ func (s *QueryTestSuite) Test_QueryContext() {
 			}
 		}
 	})
+	s.Run("update-returning", func() {
+		db := GetDB(s.T())
+		rows, err := db.QueryContext(context.Background(), `UPDATE "test_tables" SET gsi_pk = ? SET gsi_sk = ? WHERE pk = ? AND sk = ? RETURNING ALL OLD pk, gsi_sk, sk`, "TestQueryTestSuite3", "3.5", "TestQueryTestSuite", 3)
+		require.NoError(s.T(), err)
+
+		expect := TestTables{
+			PK:    "TestQueryTestSuite",
+			SK:    3,
+			GSIPK: "TestQueryTestSuite3",
+			GSISK: "3",
+		}
+		i := 0
+		for rows.NextResultSet() {
+			for rows.Next() {
+				var (
+					pk    string
+					gsiSk string
+					sk    float64
+				)
+
+				require.NoError(s.T(), rows.Scan(&pk, &gsiSk, &sk))
+				require.Equal(s.T(), expect.PK, pk)
+				require.Equal(s.T(), expect.GSISK, gsiSk)
+				require.Equal(s.T(), expect.SK, sk)
+				i++
+			}
+		}
+		require.Equal(s.T(), 1, i)
+	})
+	s.Run("delete-returning", func() {
+		db := GetDB(s.T())
+		rows, err := db.QueryContext(context.Background(), `DELETE FROM "test_tables" WHERE pk = ? AND sk = ? RETURNING ALL OLD pk, gsi_sk, sk`, "TestQueryTestSuite", 3)
+		require.NoError(s.T(), err)
+
+		expect := TestTables{
+			PK:    "TestQueryTestSuite",
+			SK:    3,
+			GSIPK: "TestQueryTestSuite3",
+			GSISK: "3",
+		}
+		i := 0
+		for rows.NextResultSet() {
+			for rows.Next() {
+				var (
+					pk    string
+					gsiSk string
+					sk    float64
+				)
+
+				require.NoError(s.T(), rows.Scan(&pk, &gsiSk, &sk))
+				require.Equal(s.T(), expect.PK, pk)
+				require.Equal(s.T(), expect.GSISK, gsiSk)
+				require.Equal(s.T(), expect.SK, sk)
+				i++
+			}
+		}
+		require.Equal(s.T(), 1, i)
+	})
 }
 
 func (s *QueryTestSuite) Test_Query() {
@@ -493,6 +646,56 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 			}
 		}
 		require.Equal(s.T(), i, 1)
+	})
+	s.Run("update-returning", func() {
+		db := GetDB(s.T())
+		query, err := db.PrepareContext(context.Background(), `UPDATE "test_tables" SET gsi_pk = ? SET gsi_sk = ? WHERE pk = ? AND sk = ? RETURNING ALL OLD pk, gsi_sk, sk`)
+		require.NoError(s.T(), err)
+
+		row := query.QueryRowContext(context.Background(), "TestQueryTestSuite3", "3.5", "TestQueryTestSuite", 3)
+
+		expect := TestTables{
+			PK:    "TestQueryTestSuite",
+			SK:    3,
+			GSIPK: "TestQueryTestSuite3",
+			GSISK: "3",
+		}
+
+		var (
+			pk    string
+			gsiSk string
+			sk    float64
+		)
+
+		require.NoError(s.T(), row.Scan(&pk, &gsiSk, &sk))
+		require.Equal(s.T(), expect.PK, pk)
+		require.Equal(s.T(), expect.SK, sk)
+		require.Equal(s.T(), expect.GSISK, gsiSk)
+	})
+	s.Run("delete-returning", func() {
+		db := GetDB(s.T())
+		query, err := db.PrepareContext(context.Background(), `DELETE FROM "test_tables" WHERE pk = ? AND sk = ? RETURNING ALL OLD pk, gsi_sk, sk`)
+		require.NoError(s.T(), err)
+
+		row := query.QueryRowContext(context.Background(), "TestQueryTestSuite", 3)
+
+		expect := TestTables{
+			PK:    "TestQueryTestSuite",
+			SK:    3,
+			GSIPK: "TestQueryTestSuite3",
+			GSISK: "3",
+		}
+
+		var (
+			pk    string
+			gsiSk string
+			sk    float64
+		)
+
+		require.NoError(s.T(), row.Scan(&pk, &gsiSk, &sk))
+		require.Equal(s.T(), expect.PK, pk)
+		require.Equal(s.T(), expect.SK, sk)
+		require.Equal(s.T(), expect.GSISK, gsiSk)
 	})
 }
 

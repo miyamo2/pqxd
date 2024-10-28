@@ -3,7 +3,6 @@ package pqxd
 import (
 	"context"
 	"database/sql/driver"
-	"fmt"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -131,45 +130,11 @@ func (c *connection) ExecContext(ctx context.Context, query string, args []drive
 
 // QueryContext See: driver.QueryerContext
 func (c *connection) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-	if c.closed.Load() {
-		return nil, driver.ErrBadConn
+	query, selectedList := parseQuery(query)
+	if len(selectedList) == 0 {
+		return nil, ErrInvalidSyntaxOfQuery
 	}
-	match := reSELECT.FindStringSubmatch(query)
-	if len(match) == 0 {
-		return nil, nil
-	}
-	selectedList := extractSelectedListFromMatchString(match)
-
-	params, err := toPartiQLParameters(args)
-	if err != nil {
-		return nil, err
-	}
-
-	if c.txOngoing.Load() {
-		inout := &transactionInOut{
-			input: types.ParameterizedStatement{
-				Statement:  &query,
-				Parameters: params,
-			},
-		}
-		fetch := c.newTxFetchClosure(inout)
-		c.txStmtPub.Load().publish(inout)
-		return newTxRows(selectedList, fetch, c.txCommiter.Load()), nil
-	}
-
-	input := dynamodb.ExecuteStatementInput{
-		Statement:  &query,
-		Parameters: params,
-	}
-	fetch := c.newFetchClosure(input)
-
-	var items []map[string]types.AttributeValue
-	nt, err := fetch(ctx, nil, &items)
-	if err != nil {
-		return nil, err
-	}
-
-	return newRows(selectedList, nt, fetch, items), nil
+	return c.query(ctx, query, selectedList, args)
 }
 
 // BeginTx See: driver.ConnBeginTx
@@ -237,6 +202,44 @@ func (c *connection) BeginTx(ctx context.Context, opts driver.TxOptions) (driver
 	return c, nil
 }
 
+// query executes a query with given query-string, selected-list and arguments.
+func (c *connection) query(ctx context.Context, query string, selectedList []string, args []driver.NamedValue) (driver.Rows, error) {
+	if c.closed.Load() {
+		return nil, driver.ErrBadConn
+	}
+
+	params, err := toPartiQLParameters(args)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.txOngoing.Load() {
+		inout := &transactionInOut{
+			input: types.ParameterizedStatement{
+				Statement:  &query,
+				Parameters: params,
+			},
+		}
+		fetch := c.newTxFetchClosure(inout)
+		c.txStmtPub.Load().publish(inout)
+		return newTxRows(selectedList, fetch, c.txCommiter.Load()), nil
+	}
+
+	input := dynamodb.ExecuteStatementInput{
+		Statement:  &query,
+		Parameters: params,
+	}
+	fetch := c.newFetchClosure(input)
+
+	var items []map[string]types.AttributeValue
+	nt, err := fetch(ctx, nil, &items)
+	if err != nil {
+		return nil, err
+	}
+
+	return newRows(selectedList, nt, fetch, items), nil
+}
+
 // named capture keys
 const (
 	// namedCaptureKeySelectedList is the named capture key for selected list
@@ -262,6 +265,9 @@ const (
 
 	// namedCaptureKeyDELETEClause is the named capture key for DELETE clause
 	namedCaptureKeyDELETEClause = "delete_clause"
+
+	// namedCaptureKeyRETURNINGSelectedList is the named capture key for RETURNING selected list
+	namedCaptureKeyRETURNINGSelectedList = "returning_selected_list"
 )
 
 // regular expression strings
@@ -275,7 +281,11 @@ const (
 	// reStrSELECTTableName is the regular expression for table name
 	reStrSELECTTableName = `(?P<` + namedCaptureKeySELECTTableName + `>("[a-z0-9_\-\.]{3,255}"(\."[a-z0-9_\-\.]{3,255}")?))`
 
+	// reStrSELECTStatement is the regular expression for SELECT statement
 	reStrSELECTStatement = `(?i)^\s*(?:SELECT)\s+` + reStrSelectedList + `\s+(?:FROM)\s+` + reStrSELECTTableName + `(\s+` + reStrWHERECondition + `)?` + `\s*$`
+
+	// reStrRETURNINGClause is the regular expression for RETURNING clause
+	reStrRETURNINGClause = `(?i).*(?:RETURNING\s+(ALL OLD|MODIFIED OLD|ALL NEW|MODIFIED NEW)\s+)(?P<` + namedCaptureKeyRETURNINGSelectedList + `>(\*|[a-z0-9_\-\.]{1,255}(,\s*[a-z0-9_\-\.]{1,255})*))\s*$`
 
 	// reStrINSERTClause is the regular expression for INSERT clause
 	reStrINSERTClause = `(?P<` + namedCaptureKeyINSERTClause + `>INSERT)`
@@ -289,11 +299,37 @@ const (
 	// reStrUPDATEClause is the regular expression for UPDATE clause
 	reStrUPDATEClause = `(?P<` + namedCaptureKeyUPDATEClause + `>UPDATE)`
 
+	// reStrListAppend is the regular expression for list_append
+	reStrListAppend = `(list_append\((.+),\s*(.+)\))`
+
+	// reStrListSetAdd is the regular expression for list_set_add
+	reStrStringSetAdd = `(set_add\((.+),\s*(.+)\))`
+
+	// reStrSet is the regular expression for set type
+	reStrSet = `(<<\s*(,?\s*(.+)\s*)*\s*>>)`
+
+	// reStrList is the regular expression for list type
+	reStrList = `(\[\s*(,?\s*(.+)\s*)*\s*\])`
+
+	// reStrMap is the regular expression for map type
+	reStrMap = `(\{\s*(,?(.+)\s*:\s*(.+))*\s*\})`
+
+	// reStrS is the regular expression for string type
+	reStrS = `"(.+)"`
+
+	// reStrN is the regular expression for number type
+	reStrN = `(\d+)`
+
+	// reStrCollectionWithIndex is the regular expression for collection with index
+	reStrCollectionWithIndex = `(([a-z0-9_\-\.]{3,255}(\.[a-z0-9_\-\.]{3,255})*\[(\d+|'(.+)')\]))`
+
 	// reStrUPDATESet is the regular expression for UPDATE set
-	reStrUPDATESet = `(?P<` + namedCaptureKeyUpdateSet + `>(((SET\s+[a-z0-9_\-\.]{3,255}=.+)|(REMOVE\s+[a-z0-9_\-\.]{3,255}=.+))+))`
+	reStrUPDATESet = `(?P<` + namedCaptureKeyUpdateSet + `>(((\s+SET\s+[a-z0-9_\-\.]{3,255}\s*=\s*(` +
+		reStrS + `|` + reStrN + `|` + reStrList + `|` + reStrSet + `|` + reStrMap + `|` + reStrListAppend + `|` + reStrStringSetAdd + `|` + `\?` +
+		`))|(\s+REMOVE\s+[a-z0-9_\-\.]{3,255}\s*=\s*` + reStrCollectionWithIndex + `))+))`
 
 	// reStrUPDATEStatement is the regular expression for UPDATE statement
-	reStrUPDATEStatement = `(?i)^\s*` + reStrUPDATEClause + `(?:\s+("[a-z0-9_\-\.]{3,255}")\s+)` + reStrUPDATESet + reStrWHERECondition + `\s*$`
+	reStrUPDATEStatement = `(?i)^\s*` + reStrUPDATEClause + `(?:\s+("[a-z0-9_\-\.]{3,255}"))` + reStrUPDATESet + `\s*` + reStrWHERECondition + `\s*$`
 
 	// reStrDELETEClause is the regular expression for DELETE clause
 	reStrDELETEClause = `(?P<` + namedCaptureKeyDELETEClause + `>DELETE)`
@@ -315,30 +351,38 @@ var (
 
 	// reDELETE is the regular expression for DELETE statement
 	reDELETE = regexp.MustCompile(reStrDELETEStatement)
+
+	// reRETURNING is the regular expression for RETURNING clause
+	reRETURNING = regexp.MustCompile(reStrRETURNINGClause)
 )
 
-var execRegexps = []*regexp.Regexp{reINSERT, reUPDATE, reDELETE}
+var (
+	// returnableStatementRegexps is the list of regular expressions for returnable statements
+	returnableStatementRegexps = []*regexp.Regexp{reSELECT, reUPDATE, reDELETE}
+)
 
 // preparedStatementFromQueryString returns prepared statement from the query string
 func (c *connection) preparedStatementFromQueryString(query string) (stmt driver.Stmt, err error) {
-	for _, regx := range execRegexps {
+	for _, regx := range returnableStatementRegexps {
 		if match := regx.FindStringSubmatch(query); len(match) > 0 {
-			stmt = newStatementExec(
-				query,
+			parsedQuery, selectedList := parseQuery(query)
+			stmt = newStatement(
+				parsedQuery,
+				selectedList,
 				countPlaceHolders(match, regx),
+				c.query,
 				c.ExecContext,
 				c.newCloseCheckClosure())
 			return
 		}
 	}
-	if match := reSELECT.FindStringSubmatch(query); len(match) > 0 {
-		if len(match) == 0 {
-			return nil, fmt.Errorf("invalid query: %s", query)
-		}
-		stmt = newStatementQuery(
+	if match := reINSERT.FindStringSubmatch(query); len(match) > 0 {
+		stmt = newStatement(
 			query,
-			countPlaceHolders(match, reSELECT),
-			c.QueryContext,
+			nil,
+			countPlaceHolders(match, reINSERT),
+			c.query,
+			c.ExecContext,
 			c.newCloseCheckClosure())
 		return
 	}
@@ -359,26 +403,6 @@ func (c *connection) newFetchClosure(input dynamodb.ExecuteStatementInput) fetch
 		}
 		*dest = output.Items
 		return output.NextToken, nil
-	}
-}
-
-// newExecClosure returns execClosure
-func (c *connection) newExecClosure(input dynamodb.ExecuteStatementInput) execClosure {
-	return func(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
-		if c.closed.Load() {
-			return nil, driver.ErrBadConn
-		}
-		params, err := toPartiQLParameters(args)
-		if err != nil {
-			return nil, err
-		}
-
-		input.Parameters = params
-		_, err = c.client.ExecuteStatement(ctx, &input)
-		if err != nil {
-			return nil, err
-		}
-		return newPqxdResult(1), nil
 	}
 }
 
@@ -428,10 +452,35 @@ func (c *connection) newTxGetAffected(inOut *transactionInOut) func() (int64, er
 	}
 }
 
-// extractSelectedListFromMatchString extracts selected list from the match string
-func extractSelectedListFromMatchString(match []string) (columns []string) {
-	selectedListStr := match[reSELECT.SubexpIndex(namedCaptureKeySelectedList)]
-	for _, v := range strings.Split(selectedListStr, ",") {
+// parseQuery parses the query and returns the parsed-query, selected-list and raw-selected-list
+func parseQuery(query string) (parsedQuery string, selectedList []string) {
+	parsedQuery = query
+	if match := reSELECT.FindStringSubmatch(query); len(match) > 0 {
+		selectedList, _ = selectedListFromMatchString(match, reSELECT, namedCaptureKeySelectedList)
+		return
+	}
+	match := reRETURNING.FindStringSubmatch(query)
+	if len(match) == 0 {
+		return
+	}
+	selectedList, rawSelectedList := selectedListFromMatchString(match, reRETURNING, namedCaptureKeyRETURNINGSelectedList)
+	if len(selectedList) == 0 {
+		return
+	}
+	if rawSelectedList != "*" {
+		parsedQuery = strings.Replace(query, rawSelectedList, "*", 1)
+	}
+	return
+}
+
+// selectedListFromMatchString extracts selected list from the match string
+func selectedListFromMatchString(match []string, regex *regexp.Regexp, namedCaptureKey string) (columns []string, rawSelectedList string) {
+	index := regex.SubexpIndex(namedCaptureKey)
+	if index == -1 {
+		return
+	}
+	rawSelectedList = strings.TrimSpace(match[index])
+	for _, v := range strings.Split(rawSelectedList, ",") {
 		trimmedQuot := strings.ReplaceAll(v, `'`, "")
 		trimmedWQuot := strings.ReplaceAll(trimmedQuot, `"`, "")
 		columns = append(columns, strings.TrimSpace(trimmedWQuot))
