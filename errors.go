@@ -14,4 +14,7 @@ var (
 
 	// ErrTxDualBoot occurs when running more than one transaction at a time in a single connection
 	ErrTxDualBoot = errors.New("pqxd: cannot run more than transaction at a time in a single connection")
+
+	// ErrInvalidSyntaxOfQuery occurs when the query syntax is invalid
+	ErrInvalidSyntaxOfQuery = errors.New("pqxd: invalid syntax of query")
 )

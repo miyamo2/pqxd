@@ -1,4 +1,4 @@
-# pqxd
+# pqxd - [database/sql](https://golang.org/pkg/database/sql/)  driver for [PartiQL in DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.html)
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/miyamo2/pqxd.svg)](https://pkg.go.dev/github.com/miyamo2/pqxd)
 [![CI](https://github.com/miyamo2/pqxd/actions/workflows/ci.yaml/badge.svg)](https://github.com/miyamo2/pqxd/actions/workflows/ci.yaml)
@@ -6,8 +6,6 @@
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/miyamo2/pqxd)](https://img.shields.io/github/v/release/miyamo2/pqxd)
 [![Go Report Card](https://goreportcard.com/badge/github.com/miyamo2/pqxd)](https://goreportcard.com/report/github.com/miyamo2/pqxd)
 [![GitHub License](https://img.shields.io/github/license/miyamo2/pqxd?&color=blue)](https://img.shields.io/github/license/miyamo2/pqxd?&color=blue)
-
-pqxd, the `database/sql` driver for [PartiQL in DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.html).
 
 ## Quick Start
 
@@ -72,6 +70,10 @@ func main() {
 ```
 
 #### `SELECT`
+
+> [!TIP]
+> If `*` is specified in the select column list, 
+> the results of the rows are automatically sorted by column name(asc).
 
 ##### Scan
 
@@ -212,6 +214,45 @@ if err := row.Scan(&id, &name); err != nil {
     return
 }
 fmt.Printf("id: %s, name: %d\n", id, name)
+```
+
+##### `RETURNING`
+
+`pqxd` supports the `RETURNING` clause.
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+defer cancel()
+
+row := db.QueryRowContext(context.Background(), `UPDATE "users" SET name = ? SET nickname = ? WHERE id = ? RETURNING MODIFIED OLD *`, "David", "Dave", "3")
+
+var name, nickname sql.NullString
+if err := row.Scan(&name, &nickname); err != nil {
+    fmt.Printf("something happend. err: %s\n", err.Error())
+    return
+}
+if name.Valid {
+    fmt.Printf("name: %s\n", name.String)
+}
+if nickname.Valid {
+    fmt.Printf("nickname: %s\n", nickname.String)
+}
+```
+
+And provides proprietary syntax for specifying a column list instead of `*`.
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+defer cancel()
+
+row := db.QueryRowContext(context.Background(), `UPDATE "users" SET name = ? SET nickname = ? WHERE id = ? RETURNING ALL OLD id`, "Robert", "Bob", "2")
+
+var id string
+if err := row.Scan(&id); err != nil {
+    fmt.Printf("something happend. err: %s\n", err.Error())
+    return
+}
+fmt.Printf("id: %s\n", id)
 ```
 
 #### `INSERT`/`UPDATE`/`DELETE`
