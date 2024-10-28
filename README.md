@@ -59,7 +59,7 @@ func main() {
 				id   string
 				name string
 			)
-			if rows.Scan(&id, &name); err != nil {
+			if err := rows.Scan(&id, &name); err != nil {
 				fmt.Printf("something happend. err: %s\n", err.Error())
 				continue
 			}
@@ -85,7 +85,7 @@ for rows.NextResultSet() { // page feed with next token
             id string
             name string
         )
-        if rows.Scan(&id, &name); err != nil {
+        if err := rows.Scan(&id, &name); err != nil {
             fmt.Printf("something happend. err: %s\n", err.Error())
             continue
         }
@@ -102,7 +102,7 @@ var (
     id string
     name string
 )
-if row.Scan(&id, &name); err != nil {
+if err := row.Scan(&id, &name); err != nil {
     fmt.Printf("something happend. err: %s\n", err.Error())
     return
 }
@@ -118,7 +118,7 @@ var (
     id string
     name string
 )
-if row.Scan(&id, &name); err != nil {
+if err := row.Scan(&id, &name); err != nil {
     fmt.Printf("something happend. err: %s\n", err.Error())
     return
 }
@@ -147,7 +147,7 @@ var (
     id string
     name string
 )
-if row.Scan(&id, &name); err != nil {
+if err := row.Scan(&id, &name); err != nil {
     fmt.Printf("something happend. err: %s\n", err.Error())
     return
 }
