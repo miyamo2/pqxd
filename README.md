@@ -78,10 +78,7 @@ func main() {
 ##### Scan
 
 ```go
-ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-defer cancel()
-
-rows, err := db.QueryContext(ctx, `SELECT id, name FROM "users"`)
+rows, err := db.QueryContext(context.Background(), `SELECT id, name FROM "users"`)
 for rows.NextResultSet() { // page feed with next token
     for rows.Next() {
         var (
@@ -100,10 +97,7 @@ for rows.NextResultSet() { // page feed with next token
 ##### GetItem
 
 ```go
-ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-defer cancel()
-
-row := db.QueryRowContext(ctx, `SELECT id, name FROM "users" WHERE id = ?`, "1")
+row := db.QueryRowContext(context.Background(), `SELECT id, name FROM "users" WHERE id = ?`, "1")
 var (
     id string
     name string
@@ -118,10 +112,7 @@ fmt.Printf("id: %s, name: %d\n", id, name)
 ##### GetItem with Global Secondary Index
 
 ```go
-ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-defer cancel()
-
-row := db.QueryRowContext(ctx, `SELECT id, name FROM "users"."gsi_pk-gsi-sk_index" WHERE gsi_pk = ? AND gsi_sk = ?`, "foo", "bar")
+row := db.QueryRowContext(context.Background(), `SELECT id, name FROM "users"."gsi_pk-gsi-sk_index" WHERE gsi_pk = ? AND gsi_sk = ?`, "foo", "bar")
 
 var (
     id string
@@ -137,8 +128,7 @@ fmt.Printf("id: %s, name: %d\n", id, name)
 ##### With Prepared Statement
 
 ```go
-ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-defer cancel()
+ctx := context.Background()
 
 stmt, err := db.PrepareContext(ctx, `SELECT id, name FROM "users" WHERE id = ?`)
 if err != nil {
@@ -172,17 +162,13 @@ if err != nil {
     return err
 }
 
-ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-defer cancel()
+ctx := context.Background()
 
 rows, err := tx.QueryContext(ctx, `SELECT id, name FROM "users" WHERE id = ?`, "1")
 if err != nil {
     tx.Rollback()
     return err
 }
-
-ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-defer cancel()
 
 row := tx.QueryRowContext(ctx, `SELECT id, name FROM "users" WHERE id = ?`, "2")
 
@@ -221,9 +207,6 @@ fmt.Printf("id: %s, name: %d\n", id, name)
 `pqxd` supports the `RETURNING` clause.
 
 ```go
-ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-defer cancel()
-
 row := db.QueryRowContext(context.Background(), `UPDATE "users" SET name = ? SET nickname = ? WHERE id = ? RETURNING MODIFIED OLD *`, "David", "Dave", "3")
 
 var name, nickname sql.NullString
@@ -242,9 +225,6 @@ if nickname.Valid {
 And provides proprietary syntax for specifying a column list instead of `*`.
 
 ```go
-ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-defer cancel()
-
 row := db.QueryRowContext(context.Background(), `UPDATE "users" SET name = ? SET nickname = ? WHERE id = ? RETURNING ALL OLD id`, "Robert", "Bob", "2")
 
 var id string

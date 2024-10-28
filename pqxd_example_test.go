@@ -276,3 +276,27 @@ func ExampleNewConnector() {
 		fmt.Println(err.Error())
 	}
 }
+
+func Example_returning() {
+	row := db.QueryRowContext(context.Background(), `UPDATE "users" SET name = ? SET nickname = ? WHERE id = ? RETURNING MODIFIED OLD *`, "David", "Dave", "3")
+
+	var name, nickname sql.NullString
+	if err := row.Scan(&name, &nickname); err != nil {
+		fmt.Printf("something happend. err: %s\n", err.Error())
+		return
+	}
+	if name.Valid {
+		fmt.Printf("name: %s\n", name.String)
+	}
+	if nickname.Valid {
+		fmt.Printf("nickname: %s\n", nickname.String)
+	}
+
+	row = db.QueryRowContext(context.Background(), `UPDATE "users" SET name = ? SET nickname = ? WHERE id = ? RETURNING ALL OLD id`, "Bob", "2")
+	var id string
+	if err := row.Scan(&id); err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	fmt.Printf("id: %s\n", id)
+}
