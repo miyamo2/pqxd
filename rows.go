@@ -2,6 +2,7 @@ package pqxd
 
 import (
 	"context"
+	"database/sql"
 	"database/sql/driver"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -69,7 +70,14 @@ func (r *pqxdRows) Next(dest []driver.Value) error {
 		if err := attributevalue.Unmarshal(colVal, &value); err != nil {
 			return err
 		}
-		dest[i] = value
+		switch d := dest[i].(type) {
+		case sql.Scanner:
+			if err := d.Scan(value); err != nil {
+				return err
+			}
+		default:
+			dest[i] = value
+		}
 	}
 	return nil
 }

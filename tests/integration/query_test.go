@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"strconv"
 	"testing"
 )
 
@@ -17,6 +18,21 @@ type QueryTestSuite struct {
 
 func TestQueryTestSuite(t *testing.T) {
 	suite.Run(t, &QueryTestSuite{client: GetClient(t)})
+}
+
+// tenTimes for testing custom scanner
+type tenTimes string
+
+func (t *tenTimes) Scan(src interface{}) error {
+	switch v := src.(type) {
+	case string:
+		i, err := strconv.Atoi(v)
+		if err != nil {
+			return err
+		}
+		*t = tenTimes(strconv.Itoa(i * 10))
+	}
+	return nil
 }
 
 func (s *QueryTestSuite) testData() []map[string]types.AttributeValue {
@@ -453,6 +469,38 @@ func (s *QueryTestSuite) Test_QueryContext() {
 				require.Equal(s.T(), expect[i].SK, sk)
 				require.Equal(s.T(), expect[i].GSIPK, gsiPk)
 				require.Equal(s.T(), expect[i].GSISK, gsiSk)
+				i++
+			}
+		}
+	})
+	s.Run("with-scanner", func() {
+		db := GetDB(s.T())
+		rows, err := db.QueryContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE gsi_pk = ?`, "TestQueryTestSuite3")
+		require.NoError(s.T(), err)
+		expect := []TestTables{
+			{
+				PK:    "TestQueryTestSuite",
+				SK:    3,
+				GSIPK: "TestQueryTestSuite3",
+				GSISK: "30",
+			},
+		}
+
+		i := 0
+		for rows.NextResultSet() {
+			for rows.Next() {
+				var (
+					pk    string
+					sk    float64
+					gsiPk string
+					gsiSk tenTimes
+				)
+
+				require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+				require.Equal(s.T(), expect[i].PK, pk)
+				require.Equal(s.T(), expect[i].SK, sk)
+				require.Equal(s.T(), expect[i].GSIPK, gsiPk)
+				require.Equal(s.T(), expect[i].GSISK, string(gsiSk))
 				i++
 			}
 		}
