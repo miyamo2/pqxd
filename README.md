@@ -72,8 +72,12 @@ func main() {
 #### `SELECT`
 
 > [!TIP]
-> If `*` is specified in the select column list, 
+> If `*` is specified in the select column list,  
 > the results of the rows are automatically sorted by column name(asc).
+> 
+> However, if specified with *, the number of attributes may differ from row to row. 
+> 
+> Therefore, it is recommended that the selection column list specify the attribute names.
 
 ##### Scan
 
