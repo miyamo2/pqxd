@@ -1,3 +1,13 @@
+## 0.3.0 - 2024-10-29
+
+### ✨ New Features
+
+- Added support for `sql.Scanner`
+
+### 📚 Documentation
+
+- Few fixes in the example codes
+
 ## 0.2.0 - 2024-10-28
 
 ### ✨ New Features
