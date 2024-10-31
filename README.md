@@ -34,7 +34,7 @@ func main() {
 	ctx := context.Background()
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("ap-northeast-1"))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("unable to load SDK config, %v", err)
 	}
 	db := sql.OpenDB(pqxd.NewConnector(cfg))
 	if db == nil {
@@ -63,7 +63,7 @@ func main() {
 				fmt.Printf("something happend. err: %s\n", err.Error())
 				continue
 			}
-			fmt.Printf("id: %s, name: %d\n", id, name)
+			fmt.Printf("id: %s, name: %s\n", id, name)
 		}
 	}
 }
@@ -93,7 +93,7 @@ for rows.NextResultSet() { // page feed with next token
             fmt.Printf("something happend. err: %s\n", err.Error())
             continue
         }
-        fmt.Printf("id: %s, name: %d\n", id, name)
+        fmt.Printf("id: %s, name: %s\n", id, name)
     }
 }
 ```
@@ -110,7 +110,7 @@ if err := row.Scan(&id, &name); err != nil {
     fmt.Printf("something happend. err: %s\n", err.Error())
     return
 }
-fmt.Printf("id: %s, name: %d\n", id, name)
+fmt.Printf("id: %s, name: %s\n", id, name)
 ```
 
 ##### GetItem with Global Secondary Index
@@ -126,7 +126,7 @@ if err := row.Scan(&id, &name); err != nil {
     fmt.Printf("something happend. err: %s\n", err.Error())
     return
 }
-fmt.Printf("id: %s, name: %d\n", id, name)
+fmt.Printf("id: %s, name: %s\n", id, name)
 ```
 
 ##### With Prepared Statement
@@ -155,7 +155,7 @@ if err := row.Scan(&id, &name); err != nil {
     fmt.Printf("something happend. err: %s\n", err.Error())
     return
 }
-fmt.Printf("id: %s, name: %d\n", id, name)
+fmt.Printf("id: %s, name: %s\n", id, name)
 ```
 
 ##### With Transaction
@@ -192,7 +192,7 @@ for rows.Next() {
         fmt.Printf("something happend. err: %s\n", err.Error())
         continue
     }
-    fmt.Printf("id: %s, name: %d\n", id, name)
+    fmt.Printf("id: %s, name: %s\n", id, name)
 }
 
 var (
@@ -203,7 +203,7 @@ if err := row.Scan(&id, &name); err != nil {
     fmt.Printf("something happend. err: %s\n", err.Error())
     return
 }
-fmt.Printf("id: %s, name: %d\n", id, name)
+fmt.Printf("id: %s, name: %s\n", id, name)
 ```
 
 ##### `RETURNING`
@@ -387,7 +387,7 @@ func main() {
 	ctx := context.Background()
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("ap-northeast-1"))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("unable to load SDK config, %v", err)
 	}
 	
 	// Instrumenting New Relic
@@ -419,7 +419,7 @@ func main() {
 	ctx := context.Background()
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("ap-northeast-1"))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("unable to load SDK config, %v", err)
 	}
 	
 	// Instrumenting Datadog
@@ -457,6 +457,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("unable to load SDK config, %v", err)
 	}
+	
 	// Instrumenting X-Ray
 	awsv2.AWSV2Instrumentor(&cfg.APIOptions)
 
