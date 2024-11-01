@@ -5,6 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/miyamo2/pqxd"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"strconv"
@@ -234,6 +235,89 @@ func (s *QueryTestSuite) Test_QueryRowContext() {
 		require.Equal(s.T(), expect.PK, pk)
 		require.Equal(s.T(), expect.SK, sk)
 		require.Equal(s.T(), expect.GSISK, gsiSk)
+	})
+	s.Run("describe-table", func() {
+		db := GetDB(s.T())
+		row := db.QueryRowContext(context.Background(), `SELECT * FROM "!pqxd_describe_table" WHERE table_name = ?`, "test_tables")
+
+		var (
+			archivalSummary           pqxd.ArchivalSummary
+			attributeDefinitions      pqxd.AttributeDefinitions
+			billingModeSummary        pqxd.BillingModeSummary
+			creationDateTime          pqxd.CreationDateTime
+			deletionProtectionEnabled pqxd.DeletionProtectionEnabled
+			keySchema                 pqxd.KeySchema
+			globalSecondaryIndexes    pqxd.GlobalSecondaryIndexes
+			globalTableVersion        pqxd.GlobalTableVersion
+			itemCount                 pqxd.ItemCount
+			localSecondaryIndexes     pqxd.LocalSecondaryIndexes
+			onDemandThroughput        pqxd.OnDemandThroughput
+			provisionedThroughput     pqxd.ProvisionedThroughput
+			replicas                  pqxd.Replicas
+			restoreSummary            pqxd.RestoreSummary
+			sseDescription            pqxd.SSEDescription
+			streamSpecification       pqxd.StreamSpecification
+			tableClassSummary         pqxd.TableClassSummary
+			tableStatus               pqxd.TableStatus
+		)
+		err := row.Scan(&archivalSummary, &attributeDefinitions, &billingModeSummary, &creationDateTime, &deletionProtectionEnabled, &keySchema, &globalSecondaryIndexes, &globalTableVersion, &itemCount, &localSecondaryIndexes, &onDemandThroughput, &provisionedThroughput, &replicas, &restoreSummary, &sseDescription, &streamSpecification, &tableClassSummary, &tableStatus)
+		require.NoError(s.T(), err)
+
+		require.False(s.T(), archivalSummary.Valid)
+
+		require.Len(s.T(), attributeDefinitions, 4)
+
+		require.Equal(s.T(), aws.String("pk"), attributeDefinitions[0].AttributeName)
+		require.Equal(s.T(), types.ScalarAttributeTypeS, attributeDefinitions[0].AttributeType)
+		require.Equal(s.T(), aws.String("sk"), attributeDefinitions[1].AttributeName)
+		require.Equal(s.T(), types.ScalarAttributeTypeN, attributeDefinitions[1].AttributeType)
+		require.Equal(s.T(), aws.String("gsi_pk"), attributeDefinitions[2].AttributeName)
+		require.Equal(s.T(), types.ScalarAttributeTypeS, attributeDefinitions[2].AttributeType)
+		require.Equal(s.T(), aws.String("gsi_sk"), attributeDefinitions[3].AttributeName)
+		require.Equal(s.T(), types.ScalarAttributeTypeS, attributeDefinitions[3].AttributeType)
+
+		require.False(s.T(), billingModeSummary.Valid)
+		require.True(s.T(), creationDateTime.Valid)
+
+		require.True(s.T(), deletionProtectionEnabled.Valid)
+		require.False(s.T(), deletionProtectionEnabled.Bool)
+
+		require.Len(s.T(), keySchema, 2)
+		require.Equal(s.T(), aws.String("pk"), keySchema[0].AttributeName)
+		require.Equal(s.T(), types.KeyTypeHash, keySchema[0].KeyType)
+		require.Equal(s.T(), aws.String("sk"), keySchema[1].AttributeName)
+		require.Equal(s.T(), types.KeyTypeRange, keySchema[1].KeyType)
+
+		require.Len(s.T(), globalSecondaryIndexes, 1)
+		require.Equal(s.T(), aws.String("gsi_pk-gsi_sk-index"), globalSecondaryIndexes[0].IndexName)
+		require.Len(s.T(), globalSecondaryIndexes[0].KeySchema, 2)
+		require.Equal(s.T(), aws.String("gsi_pk"), globalSecondaryIndexes[0].KeySchema[0].AttributeName)
+		require.Equal(s.T(), types.KeyTypeHash, globalSecondaryIndexes[0].KeySchema[0].KeyType)
+		require.Equal(s.T(), aws.String("gsi_sk"), globalSecondaryIndexes[0].KeySchema[1].AttributeName)
+		require.Equal(s.T(), types.KeyTypeRange, globalSecondaryIndexes[0].KeySchema[1].KeyType)
+		require.Equal(s.T(), types.ProjectionTypeAll, globalSecondaryIndexes[0].Projection.ProjectionType)
+		require.Equal(s.T(), aws.Int64(1), globalSecondaryIndexes[0].ProvisionedThroughput.ReadCapacityUnits)
+		require.Equal(s.T(), aws.Int64(1), globalSecondaryIndexes[0].ProvisionedThroughput.WriteCapacityUnits)
+		require.Equal(s.T(), types.IndexStatusActive, globalSecondaryIndexes[0].IndexStatus)
+
+		require.False(s.T(), globalTableVersion.Valid)
+
+		require.True(s.T(), itemCount.Valid)
+		require.Equal(s.T(), int64(5), itemCount.Int64)
+
+		require.Len(s.T(), localSecondaryIndexes, 0)
+		require.False(s.T(), onDemandThroughput.Valid)
+
+		require.True(s.T(), provisionedThroughput.Valid)
+		require.Equal(s.T(), aws.Int64(1), provisionedThroughput.V.ReadCapacityUnits)
+		require.Equal(s.T(), aws.Int64(1), provisionedThroughput.V.WriteCapacityUnits)
+
+		require.False(s.T(), replicas.Valid)
+		require.False(s.T(), restoreSummary.Valid)
+		require.False(s.T(), sseDescription.Valid)
+		require.False(s.T(), streamSpecification.Valid)
+		require.False(s.T(), tableClassSummary.Valid)
+		require.Equal(s.T(), "ACTIVE", tableStatus.String())
 	})
 }
 
@@ -744,6 +828,91 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 		require.Equal(s.T(), expect.PK, pk)
 		require.Equal(s.T(), expect.SK, sk)
 		require.Equal(s.T(), expect.GSISK, gsiSk)
+	})
+	s.Run("describe-table", func() {
+		db := GetDB(s.T())
+		stmt, err := db.PrepareContext(context.Background(), `SELECT * FROM "!pqxd_describe_table" WHERE table_name = ?`)
+		require.NoError(s.T(), err)
+		row := stmt.QueryRowContext(context.Background(), "test_tables")
+
+		var (
+			archivalSummary           pqxd.ArchivalSummary
+			attributeDefinitions      pqxd.AttributeDefinitions
+			billingModeSummary        pqxd.BillingModeSummary
+			creationDateTime          pqxd.CreationDateTime
+			deletionProtectionEnabled pqxd.DeletionProtectionEnabled
+			keySchema                 pqxd.KeySchema
+			globalSecondaryIndexes    pqxd.GlobalSecondaryIndexes
+			globalTableVersion        pqxd.GlobalTableVersion
+			itemCount                 pqxd.ItemCount
+			localSecondaryIndexes     pqxd.LocalSecondaryIndexes
+			onDemandThroughput        pqxd.OnDemandThroughput
+			provisionedThroughput     pqxd.ProvisionedThroughput
+			replicas                  pqxd.Replicas
+			restoreSummary            pqxd.RestoreSummary
+			sseDescription            pqxd.SSEDescription
+			streamSpecification       pqxd.StreamSpecification
+			tableClassSummary         pqxd.TableClassSummary
+			tableStatus               pqxd.TableStatus
+		)
+		err = row.Scan(&archivalSummary, &attributeDefinitions, &billingModeSummary, &creationDateTime, &deletionProtectionEnabled, &keySchema, &globalSecondaryIndexes, &globalTableVersion, &itemCount, &localSecondaryIndexes, &onDemandThroughput, &provisionedThroughput, &replicas, &restoreSummary, &sseDescription, &streamSpecification, &tableClassSummary, &tableStatus)
+		require.NoError(s.T(), err)
+
+		require.False(s.T(), archivalSummary.Valid)
+
+		require.Len(s.T(), attributeDefinitions, 4)
+
+		require.Equal(s.T(), aws.String("pk"), attributeDefinitions[0].AttributeName)
+		require.Equal(s.T(), types.ScalarAttributeTypeS, attributeDefinitions[0].AttributeType)
+		require.Equal(s.T(), aws.String("sk"), attributeDefinitions[1].AttributeName)
+		require.Equal(s.T(), types.ScalarAttributeTypeN, attributeDefinitions[1].AttributeType)
+		require.Equal(s.T(), aws.String("gsi_pk"), attributeDefinitions[2].AttributeName)
+		require.Equal(s.T(), types.ScalarAttributeTypeS, attributeDefinitions[2].AttributeType)
+		require.Equal(s.T(), aws.String("gsi_sk"), attributeDefinitions[3].AttributeName)
+		require.Equal(s.T(), types.ScalarAttributeTypeS, attributeDefinitions[3].AttributeType)
+
+		require.False(s.T(), billingModeSummary.Valid)
+		require.True(s.T(), creationDateTime.Valid)
+
+		require.True(s.T(), deletionProtectionEnabled.Valid)
+		require.False(s.T(), deletionProtectionEnabled.Bool)
+
+		require.Len(s.T(), keySchema, 2)
+		require.Equal(s.T(), aws.String("pk"), keySchema[0].AttributeName)
+		require.Equal(s.T(), types.KeyTypeHash, keySchema[0].KeyType)
+		require.Equal(s.T(), aws.String("sk"), keySchema[1].AttributeName)
+		require.Equal(s.T(), types.KeyTypeRange, keySchema[1].KeyType)
+
+		require.Len(s.T(), globalSecondaryIndexes, 1)
+		require.Equal(s.T(), aws.String("gsi_pk-gsi_sk-index"), globalSecondaryIndexes[0].IndexName)
+		require.Len(s.T(), globalSecondaryIndexes[0].KeySchema, 2)
+		require.Equal(s.T(), aws.String("gsi_pk"), globalSecondaryIndexes[0].KeySchema[0].AttributeName)
+		require.Equal(s.T(), types.KeyTypeHash, globalSecondaryIndexes[0].KeySchema[0].KeyType)
+		require.Equal(s.T(), aws.String("gsi_sk"), globalSecondaryIndexes[0].KeySchema[1].AttributeName)
+		require.Equal(s.T(), types.KeyTypeRange, globalSecondaryIndexes[0].KeySchema[1].KeyType)
+		require.Equal(s.T(), types.ProjectionTypeAll, globalSecondaryIndexes[0].Projection.ProjectionType)
+		require.Equal(s.T(), aws.Int64(1), globalSecondaryIndexes[0].ProvisionedThroughput.ReadCapacityUnits)
+		require.Equal(s.T(), aws.Int64(1), globalSecondaryIndexes[0].ProvisionedThroughput.WriteCapacityUnits)
+		require.Equal(s.T(), types.IndexStatusActive, globalSecondaryIndexes[0].IndexStatus)
+
+		require.False(s.T(), globalTableVersion.Valid)
+
+		require.True(s.T(), itemCount.Valid)
+		require.Equal(s.T(), int64(5), itemCount.Int64)
+
+		require.Len(s.T(), localSecondaryIndexes, 0)
+		require.False(s.T(), onDemandThroughput.Valid)
+
+		require.True(s.T(), provisionedThroughput.Valid)
+		require.Equal(s.T(), aws.Int64(1), provisionedThroughput.V.ReadCapacityUnits)
+		require.Equal(s.T(), aws.Int64(1), provisionedThroughput.V.WriteCapacityUnits)
+
+		require.False(s.T(), replicas.Valid)
+		require.False(s.T(), restoreSummary.Valid)
+		require.False(s.T(), sseDescription.Valid)
+		require.False(s.T(), streamSpecification.Valid)
+		require.False(s.T(), tableClassSummary.Valid)
+		require.Equal(s.T(), "ACTIVE", tableStatus.String())
 	})
 }
 

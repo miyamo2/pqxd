@@ -195,3 +195,98 @@ func newTxRows(columnNames []string, fetch fetchClosure, txCommiter *transaction
 		once:       sync.Once{},
 	}
 }
+
+var (
+	_ driver.Rows = (*describeTableRows)(nil)
+)
+
+type describeTableRows struct {
+	// columnNames is the list of column names.
+	columnNames []string
+
+	// tableDescription See: https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/dynamodb/types#TableDescription
+	tableDescription types.TableDescription
+
+	// closed is a flag that indicates whether the rows are closed.
+	closed atomic.Bool
+}
+
+// Columns See: driver.Rows
+func (r *describeTableRows) Columns() []string {
+	return r.columnNames
+}
+
+// Close See: driver.Rows
+func (r *describeTableRows) Close() error {
+	r.closed.Store(true)
+	return nil
+}
+
+// Next See: driver.Rows
+func (r *describeTableRows) Next(dest []driver.Value) error {
+	if r.closed.Load() {
+		return driver.ErrBadConn
+	}
+	for i, selected := range r.columnNames {
+		switch selected {
+		case "ArchivalSummary":
+			dest[i] = r.tableDescription.ArchivalSummary
+		case "AttributeDefinitions":
+			dest[i] = r.tableDescription.AttributeDefinitions
+		case "BillingModeSummary":
+			dest[i] = r.tableDescription.BillingModeSummary
+		case "CreationDateTime":
+			dest[i] = r.tableDescription.CreationDateTime
+		case "DeletionProtectionEnabled":
+			dest[i] = r.tableDescription.DeletionProtectionEnabled
+		case "GlobalSecondaryIndexes":
+			dest[i] = r.tableDescription.GlobalSecondaryIndexes
+		case "GlobalTableVersion":
+			dest[i] = r.tableDescription.GlobalTableVersion
+		case "ItemCount":
+			dest[i] = r.tableDescription.ItemCount
+		case "KeySchema":
+			dest[i] = r.tableDescription.KeySchema
+		case "LatestStreamArn":
+			dest[i] = r.tableDescription.LatestStreamArn
+		case "LatestStreamLabel":
+			dest[i] = r.tableDescription.LatestStreamLabel
+		case "LocalSecondaryIndexes":
+			dest[i] = r.tableDescription.LocalSecondaryIndexes
+		case "OnDemandThroughput":
+			dest[i] = r.tableDescription.OnDemandThroughput
+		case "ProvisionedThroughput":
+			dest[i] = r.tableDescription.ProvisionedThroughput
+		case "Replicas":
+			dest[i] = r.tableDescription.Replicas
+		case "RestoreSummary":
+			dest[i] = r.tableDescription.RestoreSummary
+		case "SSEDescription":
+			dest[i] = r.tableDescription.SSEDescription
+		case "StreamSpecification":
+			dest[i] = r.tableDescription.StreamSpecification
+		case "TableArn":
+			dest[i] = r.tableDescription.TableArn
+		case "TableClassSummary":
+			dest[i] = r.tableDescription.TableClassSummary
+		case "TableId":
+			dest[i] = r.tableDescription.TableId
+		case "TableName":
+			dest[i] = r.tableDescription.TableName
+		case "TableSizeBytes":
+			dest[i] = r.tableDescription.TableSizeBytes
+		case "TableStatus":
+			dest[i] = r.tableDescription.TableStatus
+		}
+	}
+	return nil
+}
+
+// newDescribeTableRows returns a new describeTableRows
+func newDescribeTableRows(columnNames []string, tableDescription types.TableDescription) *describeTableRows {
+	return &describeTableRows{
+		columnNames:      columnNames,
+		tableDescription: tableDescription,
+		closed:           *atomic.NewBool(false),
+	}
+}

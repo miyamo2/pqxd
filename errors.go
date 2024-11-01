@@ -17,4 +17,7 @@ var (
 
 	// ErrInvalidSyntaxOfQuery occurs when the query syntax is invalid
 	ErrInvalidSyntaxOfQuery = errors.New("pqxd: invalid syntax of query")
+
+	// ErrNotSupportedWithinTx occurs when performed operation that is not supported within transaction
+	ErrNotSupportedWithinTx = errors.New("pqxd: not supported within transaction")
 )
