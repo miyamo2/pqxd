@@ -4,16 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/miyamo2/pqxd"
 	"os"
 )
 
-var db *sql.DB = sql.OpenDB(pqxd.NewConnector(aws.Config{
-	Region:      "ap-northeast-1",
-	Credentials: aws.AnonymousCredentials{},
-}))
+func MustDB() *sql.DB {
+	awsConfig, err := config.LoadDefaultConfig(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	return sql.OpenDB(pqxd.NewConnector(awsConfig))
+}
 
 func Example() {
 	awsConfig, err := config.LoadDefaultConfig(context.Background())
@@ -47,6 +49,7 @@ func Example_withOpen() {
 }
 
 func Example_queryContext() {
+	db := MustDB()
 	rows, err := db.QueryContext(context.Background(), `SELECT id, name FROM "users"`)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -81,6 +84,8 @@ func Example_queryContext() {
 }
 
 func Example_queryRowContext() {
+	db := MustDB()
+
 	var id, name string
 	err := db.QueryRowContext(context.Background(), `SELECT id, name FROM "users" WHERE id = ?`, 1).Scan(&id, &name)
 	if err != nil {
@@ -91,6 +96,8 @@ func Example_queryRowContext() {
 }
 
 func Example_execContext() {
+	db := MustDB()
+
 	insertResult, err := db.Exec(`INSERT INTO "users" VALUE { 'id': ?, 'name': ? }`, "3", "Alice")
 	if err != nil {
 		fmt.Println(err.Error())
@@ -137,6 +144,8 @@ func Example_execContext() {
 }
 
 func Example_prepareContext() {
+	db := MustDB()
+
 	stmt, err := db.PrepareContext(context.Background(), `SELECT id, name FROM "users" WHERE id = ?`)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -176,6 +185,8 @@ func Example_prepareContext() {
 }
 
 func Example_queryInTransaction() {
+	db := MustDB()
+
 	tx, err := db.BeginTx(context.Background(), nil)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -214,6 +225,8 @@ func Example_queryInTransaction() {
 }
 
 func Example_execInTransaction() {
+	db := MustDB()
+
 	tx, err := db.Begin()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -278,6 +291,8 @@ func ExampleNewConnector() {
 }
 
 func Example_returning() {
+	db := MustDB()
+
 	row := db.QueryRowContext(context.Background(), `UPDATE "users" SET name = ? SET nickname = ? WHERE id = ? RETURNING MODIFIED OLD *`, "David", "Dave", "3")
 
 	var name, nickname sql.NullString
@@ -299,4 +314,67 @@ func Example_returning() {
 		return
 	}
 	fmt.Printf("id: %s\n", id)
+}
+
+func Example_describeTable() {
+	db := MustDB()
+
+	row := db.QueryRowContext(context.Background(), `SELECT * FROM "!pqxd_describe_table" WHERE table_name = ?`, "test_tables")
+	var (
+		archivalSummary           pqxd.ArchivalSummary
+		attributeDefinitions      pqxd.AttributeDefinitions
+		billingModeSummary        pqxd.BillingModeSummary
+		creationDateTime          pqxd.CreationDateTime
+		deletionProtectionEnabled pqxd.DeletionProtectionEnabled
+		keySchema                 pqxd.KeySchema
+		globalSecondaryIndexes    pqxd.GlobalSecondaryIndexes
+		globalTableVersion        pqxd.GlobalTableVersion
+		itemCount                 pqxd.ItemCount
+		localSecondaryIndexes     pqxd.LocalSecondaryIndexes
+		onDemandThroughput        pqxd.OnDemandThroughput
+		provisionedThroughput     pqxd.ProvisionedThroughput
+		replicas                  pqxd.Replicas
+		restoreSummary            pqxd.RestoreSummary
+		sseDescription            pqxd.SSEDescription
+		streamSpecification       pqxd.StreamSpecification
+		tableClassSummary         pqxd.TableClassSummary
+		tableStatus               pqxd.TableStatus
+	)
+	err := row.Scan(&archivalSummary,
+		&attributeDefinitions,
+		&billingModeSummary,
+		&creationDateTime,
+		&deletionProtectionEnabled,
+		&keySchema,
+		&globalSecondaryIndexes,
+		&globalTableVersion,
+		&itemCount,
+		&localSecondaryIndexes,
+		&onDemandThroughput,
+		&provisionedThroughput,
+		&replicas,
+		&restoreSummary,
+		&sseDescription,
+		&streamSpecification,
+		&tableClassSummary,
+		&tableStatus,
+	)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	fmt.Printf("archivalSummary: %v\n", archivalSummary)
+}
+
+func Example_describeTableWithSpecifyColumn() {
+	db := MustDB()
+
+	row := db.QueryRowContext(context.Background(), `SELECT TableStatus FROM "!pqxd_describe_table" WHERE table_name = ?`, "test_tables")
+
+	var tableStatus pqxd.TableStatus
+	if err := row.Scan(&tableStatus); err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	fmt.Printf("TableStatus: %v\n", tableStatus)
 }

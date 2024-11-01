@@ -239,6 +239,21 @@ if err := row.Scan(&id); err != nil {
 fmt.Printf("id: %s\n", id)
 ```
 
+##### Describe Table
+
+`pqxd` supports the [DescribeTable API](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_DescribeTable.html) with `!pqxd_describe_table`, the meta-table.
+
+```go
+row := db.QueryRowContext(context.Background(), `SELECT TableStatus FROM "!pqxd_describe_table" WHERE table_name = ?`, "users")
+
+var tableStatus pqxd.TableStatus
+if err := row.Scan(&tableStatus); err != nil {
+    fmt.Println(err.Error())
+    return
+}
+fmt.Printf("TableStatus: %v\n", tableStatus)
+```
+
 #### `INSERT`/`UPDATE`/`DELETE`
 
 ```go

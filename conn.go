@@ -130,11 +130,15 @@ func (c *connection) ExecContext(ctx context.Context, query string, args []drive
 
 // QueryContext See: driver.QueryerContext
 func (c *connection) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-	query, selectedList := parseQuery(query)
-	if len(selectedList) == 0 {
+	tq := tokenize(query)
+	if len(tq.selectedList) == 0 {
 		return nil, ErrInvalidSyntaxOfQuery
 	}
-	return c.query(ctx, query, selectedList, args)
+	if tq.describeTableTarget != "" {
+		target := strings.TrimSpace(strings.ReplaceAll(tq.describeTableTarget, `'`, ""))
+		return c.describeTable(ctx, target, tq.selectedList, args)
+	}
+	return c.query(ctx, tq.queryString, tq.selectedList, args)
 }
 
 // BeginTx See: driver.ConnBeginTx
@@ -273,7 +277,7 @@ const (
 // regular expression strings
 const (
 	// reStrWHERECondition is the regular expression for WHERE condition
-	reStrWHERECondition = `(?P<` + namedCaptureKeyWHERECondition + `>(?:WHERE\s+)(.+))`
+	reStrWHERECondition = `(?:WHERE\s+)(?P<` + namedCaptureKeyWHERECondition + `>(.+))`
 
 	// reStrSelectedList is the regular expression for selected list
 	reStrSelectedList = `(?P<` + namedCaptureKeySelectedList + `>(\*|[a-z0-9_\-\.]{1,255}(,\s*[a-z0-9_\-\.]{1,255})*))`
@@ -336,6 +340,9 @@ const (
 
 	// reStrDELETEStatement is the regular expression for DELETE statement
 	reStrDELETEStatement = `(?i)^\s*` + reStrDELETEClause + `(?:\s+FROM\s+("[a-z0-9_\-\.]{3,255}")\s+)` + reStrWHERECondition + `\s*$`
+
+	// reStrDescribeTable is the regular expression for describe table
+	reStrDescribeTable = `(?i)^\s*(?:SELECT)\s+` + reStrSelectedList + `\s+(?:FROM\s+"!pqxd_describe_table"\s+)` + `(?:WHERE\s+table_name\s*=\s*)(?P<` + namedCaptureKeyWHERECondition + `>(\?|'([a-z0-9_\-\.]{3,255})'))\s*$`
 )
 
 // regexps
@@ -354,6 +361,9 @@ var (
 
 	// reRETURNING is the regular expression for RETURNING clause
 	reRETURNING = regexp.MustCompile(reStrRETURNINGClause)
+
+	// reDescribeTable is the regular expression for describe table
+	reDescribeTable = regexp.MustCompile(reStrDescribeTable)
 )
 
 var (
@@ -365,10 +375,10 @@ var (
 func (c *connection) preparedStatementFromQueryString(query string) (stmt driver.Stmt, err error) {
 	for _, regx := range returnableStatementRegexps {
 		if match := regx.FindStringSubmatch(query); len(match) > 0 {
-			parsedQuery, selectedList := parseQuery(query)
+			tq := tokenize(query)
 			stmt = newStatement(
-				parsedQuery,
-				selectedList,
+				tq.queryString,
+				tq.selectedList,
 				countPlaceHolders(match, regx),
 				c.query,
 				c.ExecContext,
@@ -382,6 +392,19 @@ func (c *connection) preparedStatementFromQueryString(query string) (stmt driver
 			nil,
 			countPlaceHolders(match, reINSERT),
 			c.query,
+			c.ExecContext,
+			c.newCloseCheckClosure())
+		return
+	}
+	if match := reDescribeTable.FindStringSubmatch(query); len(match) > 0 {
+		tq := tokenize(query)
+		stmt = newStatement(
+			tq.queryString,
+			tq.selectedList,
+			countPlaceHolders(match, reDescribeTable),
+			func(ctx context.Context, _ string, _ []string, args []driver.NamedValue) (driver.Rows, error) {
+				return c.describeTable(ctx, tq.describeTableTarget, tq.selectedList, args)
+			},
 			c.ExecContext,
 			c.newCloseCheckClosure())
 		return
@@ -452,23 +475,51 @@ func (c *connection) newTxGetAffected(inOut *transactionInOut) func() (int64, er
 	}
 }
 
-// parseQuery parses the query and returns the parsed-query, selected-list and raw-selected-list
-func parseQuery(query string) (parsedQuery string, selectedList []string) {
-	parsedQuery = query
+type tokenizedQuery struct {
+	queryString         string
+	selectedListString  string
+	selectedList        []string
+	tableName           string
+	whereCondition      string
+	placeHolders        int
+	describeTableTarget string
+}
+
+// tokenize tokenizes the query string
+func tokenize(query string) (tq tokenizedQuery) {
+	tq.queryString = query
 	if match := reSELECT.FindStringSubmatch(query); len(match) > 0 {
-		selectedList, _ = selectedListFromMatchString(match, reSELECT, namedCaptureKeySelectedList)
+		tq.selectedList, _ = selectedListFromMatchString(match, reSELECT, namedCaptureKeySelectedList)
+		tq.tableName = extractTableNameFromMatchString(match)
+		idx := reSELECT.SubexpIndex(namedCaptureKeyWHERECondition)
+		if idx != -1 {
+			tq.whereCondition = match[idx]
+		}
+		tq.placeHolders = countPlaceHolders(match, reSELECT)
 		return
 	}
-	match := reRETURNING.FindStringSubmatch(query)
-	if len(match) == 0 {
+	if match := reRETURNING.FindStringSubmatch(query); len(match) > 0 {
+		tq.selectedList, tq.selectedListString = selectedListFromMatchString(match, reRETURNING, namedCaptureKeyRETURNINGSelectedList)
+		idx := reRETURNING.SubexpIndex(namedCaptureKeyRETURNINGSelectedList)
+		if idx == -1 {
+			tq = tokenizedQuery{}
+			return
+		}
+		tq.whereCondition = match[idx]
+		if tq.selectedListString != "*" {
+			tq.queryString = strings.Replace(tq.queryString, tq.selectedListString, "*", 1)
+		}
 		return
 	}
-	selectedList, rawSelectedList := selectedListFromMatchString(match, reRETURNING, namedCaptureKeyRETURNINGSelectedList)
-	if len(selectedList) == 0 {
+	if match := reDescribeTable.FindStringSubmatch(query); len(match) > 0 {
+		tq.selectedList, _ = selectedListFromMatchString(match, reDescribeTable, namedCaptureKeySelectedList)
+		idx := reDescribeTable.SubexpIndex(namedCaptureKeyWHERECondition)
+		if idx == -1 {
+			tq = tokenizedQuery{}
+			return
+		}
+		tq.describeTableTarget = match[idx]
 		return
-	}
-	if rawSelectedList != "*" {
-		parsedQuery = strings.Replace(query, rawSelectedList, "*", 1)
 	}
 	return
 }
