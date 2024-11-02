@@ -378,3 +378,24 @@ func Example_describeTableWithSpecifyColumn() {
 	}
 	fmt.Printf("TableStatus: %v\n", tableStatus)
 }
+
+func Example_listTables() {
+	db := MustDB()
+
+	rows, err := db.QueryContext(context.Background(), `SELECT * FROM "!pqxd_list_tables"`)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	for rows.NextResultSet() {
+		for rows.Next() {
+			var tableName string
+			if err := rows.Scan(&tableName); err != nil {
+				fmt.Println(err.Error())
+				return
+			}
+			fmt.Printf("tableName: %s\n", tableName)
+		}
+	}
+}

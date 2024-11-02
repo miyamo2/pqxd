@@ -647,6 +647,22 @@ func (s *QueryTestSuite) Test_QueryContext() {
 		}
 		require.Equal(s.T(), 1, i)
 	})
+	s.Run("list-table", func() {
+		db := GetDB(s.T())
+		rows, err := db.QueryContext(context.Background(), `SELECT * FROM "!pqxd_list_tables"`)
+		require.NoError(s.T(), err)
+
+		var i int
+		for rows.NextResultSet() {
+			for rows.Next() {
+				var tableName string
+				require.NoError(s.T(), rows.Scan(&tableName))
+				require.Equal(s.T(), "test_tables", tableName)
+				i++
+			}
+		}
+		require.Equal(s.T(), 1, i)
+	})
 }
 
 func (s *QueryTestSuite) Test_Query() {
@@ -913,6 +929,25 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 		require.False(s.T(), streamSpecification.Valid)
 		require.False(s.T(), tableClassSummary.Valid)
 		require.Equal(s.T(), "ACTIVE", tableStatus.String())
+	})
+	s.Run("list-tables", func() {
+		db := GetDB(s.T())
+		stmt, err := db.PrepareContext(context.Background(), `SELECT * FROM "!pqxd_list_tables"`)
+		require.NoError(s.T(), err)
+		rows, err := stmt.QueryContext(context.Background())
+		require.NoError(s.T(), err)
+
+		var i int
+		for rows.NextResultSet() {
+			for rows.Next() {
+				var tableName string
+				err = rows.Scan(&tableName)
+				require.NoError(s.T(), err)
+				require.Equal(s.T(), "test_tables", tableName)
+				i++
+			}
+		}
+		require.Equal(s.T(), 1, i)
 	})
 }
 
