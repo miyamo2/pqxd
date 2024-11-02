@@ -226,7 +226,7 @@ if nickname.Valid {
 }
 ```
 
-And provides proprietary syntax for specifying a column list instead of `*`.
+And provides individual syntax for specifying a column list instead of `*`.
 
 ```go
 row := db.QueryRowContext(context.Background(), `UPDATE "users" SET name = ? SET nickname = ? WHERE id = ? RETURNING ALL OLD id`, "Robert", "Bob", "2")
