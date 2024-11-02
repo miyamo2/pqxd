@@ -378,10 +378,10 @@ if affected, err := deleteResult.RowsAffected(); err != nil || affected != 1 {
 }
 ```
 
-#### Connection String
+#### DSN(Data Source Name) String
 
 We recommend using `sql.OpenDB` with `pqxd.NewConnector` instead of `sql.Open`.
-But if you want to use `sql.Open`, you can use the following connection string.
+But if you want to use `sql.Open`, you can use the following DSN string.
 
 ```sh
 AWS_REGION=<aws region>
@@ -400,6 +400,10 @@ AWS_REGION=<aws region>
 ```go
 db, err := sql.Open(pqxd.DriverName, "AWS_REGION=ap-northeast-1;AWS_ACCESS_KEY_ID=AKIA...;AWS_SECRET_ACCESS_KEY=...;")
 ```
+
+> [!TIP]
+> If the application is run on AWS Lambda, connections can be obtained even if the DSN is an empty string.
+> This is because the region, access key, and secret key are defined as [runtime environment variables](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime).
 
 #### O11y
 

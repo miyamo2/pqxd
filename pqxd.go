@@ -4,5 +4,5 @@ package pqxd
 //
 // Example:
 //
-//	db, err := sql.Open(pqxd.DriverName, "REGION=ap-northeast-1;ACCESSKEY=dummy;SECRETKEY=dummy")
+//	db, err := sql.Open(pqxd.DriverName, "AWS_REGION=ap-northeast-1;AWS_ACCESS_KEY_ID=AKIA...;AWS_SECRET_ACCESS_KEY=...;")
 const DriverName = "pqxd"
