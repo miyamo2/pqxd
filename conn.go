@@ -134,6 +134,9 @@ func (c *connection) QueryContext(ctx context.Context, query string, args []driv
 	if len(tq.selectedList) == 0 {
 		return nil, ErrInvalidSyntaxOfQuery
 	}
+	if tq.listTable {
+		return c.listTables(ctx)
+	}
 	if tq.describeTableTarget != "" {
 		target := strings.TrimSpace(strings.ReplaceAll(tq.describeTableTarget, `'`, ""))
 		return c.describeTable(ctx, target, tq.selectedList, args)
@@ -343,6 +346,9 @@ const (
 
 	// reStrDescribeTable is the regular expression for describe table
 	reStrDescribeTable = `(?i)^\s*(?:SELECT)\s+` + reStrSelectedList + `\s+(?:FROM\s+"!pqxd_describe_table"\s+)` + `(?:WHERE\s+table_name\s*=\s*)(?P<` + namedCaptureKeyWHERECondition + `>(\?|'([a-z0-9_\-\.]{3,255})'))\s*$`
+
+	// reStrListTable is the regular expression for describe table
+	reStrListTable = `(?i)^\s*(?:SELECT)\s+\*\s+(?:FROM\s+"!pqxd_list_tables")\s*$`
 )
 
 // regexps
@@ -364,6 +370,9 @@ var (
 
 	// reDescribeTable is the regular expression for describe table
 	reDescribeTable = regexp.MustCompile(reStrDescribeTable)
+
+	// reListTable is the regular expression for list table
+	reListTable = regexp.MustCompile(reStrListTable)
 )
 
 var (
@@ -404,6 +413,18 @@ func (c *connection) preparedStatementFromQueryString(query string) (stmt driver
 			countPlaceHolders(match, reDescribeTable),
 			func(ctx context.Context, _ string, _ []string, args []driver.NamedValue) (driver.Rows, error) {
 				return c.describeTable(ctx, tq.describeTableTarget, tq.selectedList, args)
+			},
+			c.ExecContext,
+			c.newCloseCheckClosure())
+		return
+	}
+	if match := reListTable.FindStringSubmatch(query); len(match) > 0 {
+		stmt = newStatement(
+			query,
+			[]string{"*"},
+			0,
+			func(ctx context.Context, _ string, _ []string, _ []driver.NamedValue) (driver.Rows, error) {
+				return c.listTables(ctx)
 			},
 			c.ExecContext,
 			c.newCloseCheckClosure())
@@ -483,6 +504,7 @@ type tokenizedQuery struct {
 	whereCondition      string
 	placeHolders        int
 	describeTableTarget string
+	listTable           bool
 }
 
 // tokenize tokenizes the query string
@@ -519,6 +541,11 @@ func tokenize(query string) (tq tokenizedQuery) {
 			return
 		}
 		tq.describeTableTarget = match[idx]
+		return
+	}
+	if match := reListTable.FindStringSubmatch(query); len(match) > 0 {
+		tq.selectedList = []string{"*"}
+		tq.listTable = true
 		return
 	}
 	return

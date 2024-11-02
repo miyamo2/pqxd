@@ -143,7 +143,7 @@ func newRows(columnNames []string, nextToken *string, fetch fetchClosure, out []
 
 var _ driver.Rows = (*txRows)(nil)
 
-// txRows is an implementation of driver.Rows
+// txRows is an implementation of driver.Rows for transaction
 type txRows struct {
 	pqxdRows
 
@@ -192,15 +192,13 @@ var (
 	_ driver.Rows = (*describeTableRows)(nil)
 )
 
+// describeTableRows is an implementation of driver.Rows for DescribeTable API.
 type describeTableRows struct {
 	// columnNames is the list of column names.
 	columnNames []string
 
 	// tableDescription See: https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/dynamodb/types#TableDescription
 	tableDescription types.TableDescription
-
-	// closed is a flag that indicates whether the rows are closed.
-	closed atomic.Bool
 }
 
 // Columns See: driver.Rows
@@ -210,15 +208,11 @@ func (r *describeTableRows) Columns() []string {
 
 // Close See: driver.Rows
 func (r *describeTableRows) Close() error {
-	r.closed.Store(true)
 	return nil
 }
 
 // Next See: driver.Rows
 func (r *describeTableRows) Next(dest []driver.Value) error {
-	if r.closed.Load() {
-		return driver.ErrBadConn
-	}
 	for i, selected := range r.columnNames {
 		switch selected {
 		case "ArchivalSummary":
@@ -279,6 +273,5 @@ func newDescribeTableRows(columnNames []string, tableDescription types.TableDesc
 	return &describeTableRows{
 		columnNames:      columnNames,
 		tableDescription: tableDescription,
-		closed:           *atomic.NewBool(false),
 	}
 }
