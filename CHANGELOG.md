@@ -1,3 +1,9 @@
+## 0.5.0 - 2024-11-02
+
+### ✨ New Features
+
+- Added support for [ListTables API](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_ListTables.html) with `!pqxd_list_tables`, the meta-table.
+
 ## 0.4.0 - 2024-11-01
 
 ### ✨ New Features
