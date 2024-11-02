@@ -254,6 +254,25 @@ if err := row.Scan(&tableStatus); err != nil {
 fmt.Printf("TableStatus: %v\n", tableStatus)
 ```
 
+##### List Tables
+
+`pqxd` supports the [ListTables API](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_ListTables.html) with `!pqxd_list_tables`, the meta-table.
+
+```go
+rows, err := db.QueryContext(context.Background(), `SELECT * FROM "!pqxd_list_tables"`)
+
+for rows.NextResultSet() { // page feed with last-evaluated-key
+    for rows.Next() {
+        var tableName string
+        if err := rows.Scan(&tableName); err != nil {
+            fmt.Println(err.Error())
+            continue
+        }
+        fmt.Printf("tableName: %s\n", tableName)
+    }
+}
+```
+
 #### `INSERT`/`UPDATE`/`DELETE`
 
 ```go
