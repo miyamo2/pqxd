@@ -69,6 +69,9 @@ func main() {
 }
 ```
 
+> [!Important]
+> If `Ping` is to be performed, `dynamodb:DescribeEndpoints` policy must be set for the IAM role.
+
 #### `SELECT`
 
 > [!TIP]
@@ -214,6 +217,7 @@ fmt.Printf("id: %s, name: %s\n", id, name)
 row := db.QueryRowContext(context.Background(), `UPDATE "users" SET name = ? SET nickname = ? WHERE id = ? RETURNING MODIFIED OLD *`, "David", "Dave", "3")
 
 var name, nickname sql.NullString
+var disabled sql.NullBool
 if err := row.Scan(&name, &nickname); err != nil {
     fmt.Printf("something happend. err: %s\n", err.Error())
     return
