@@ -101,26 +101,6 @@ func (mr *MockDynamoDBClientMockRecorder) DeleteTable(ctx, params any, optFns ..
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTable", reflect.TypeOf((*MockDynamoDBClient)(nil).DeleteTable), varargs...)
 }
 
-// DescribeEndpoints mocks base method.
-func (m *MockDynamoDBClient) DescribeEndpoints(ctx context.Context, params *dynamodb.DescribeEndpointsInput, optFns ...func(*dynamodb.Options)) (*dynamodb.DescribeEndpointsOutput, error) {
-	m.ctrl.T.Helper()
-	varargs := []any{ctx, params}
-	for _, a := range optFns {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "DescribeEndpoints", varargs...)
-	ret0, _ := ret[0].(*dynamodb.DescribeEndpointsOutput)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// DescribeEndpoints indicates an expected call of DescribeEndpoints.
-func (mr *MockDynamoDBClientMockRecorder) DescribeEndpoints(ctx, params any, optFns ...any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx, params}, optFns...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeEndpoints", reflect.TypeOf((*MockDynamoDBClient)(nil).DescribeEndpoints), varargs...)
-}
-
 // DescribeTable mocks base method.
 func (m *MockDynamoDBClient) DescribeTable(ctx context.Context, params *dynamodb.DescribeTableInput, optFns ...func(*dynamodb.Options)) (*dynamodb.DescribeTableOutput, error) {
 	m.ctrl.T.Helper()

@@ -50,7 +50,7 @@ func (c *connection) Ping(ctx context.Context) error {
 	if c.closed.Load() {
 		return driver.ErrBadConn
 	}
-	_, err := c.client.DescribeEndpoints(ctx, nil)
+	_, err := c.client.ListTables(ctx, nil)
 	return err
 }
 
