@@ -24,10 +24,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/miyamo2/pqxd"
 	"log"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/miyamo2/pqxd"
 )
 
 func main() {
@@ -70,7 +71,7 @@ func main() {
 ```
 
 > [!Important]
-> If `Ping` is to be performed, `dynamodb:DescribeEndpoints` policy must be set for the IAM role.
+> If `Ping` is to be performed, `dynamodb:ListTables` policy must be set for the IAM role.
 
 #### `SELECT`
 
@@ -419,10 +420,11 @@ package main
 import (
 	"context"
 	"database/sql"
+	"log"
+
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/miyamo2/pqxd"
 	nraws "github.com/newrelic/go-agent/v3/integrations/nrawssdk-v2"
-	"log"
 )
 
 func main() {
@@ -431,10 +433,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("unable to load SDK config, %v", err)
 	}
-	
+
 	// Instrumenting New Relic
 	nraws.AppendMiddlewares(&cfg.APIOptions, nil)
-	
+
 	db := sql.OpenDB(pqxd.NewConnector(cfg))
 	if db == nil {
 		log.Fatal(err)
@@ -451,10 +453,11 @@ package main
 import (
 	"context"
 	"database/sql"
+	"log"
+
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/miyamo2/pqxd"
 	awstrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/aws/aws-sdk-go-v2/aws"
-	"log"
 )
 
 func main() {
@@ -463,7 +466,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("unable to load SDK config, %v", err)
 	}
-	
+
 	// Instrumenting Datadog
 	awstrace.AppendMiddleware(&cfg)
 
@@ -483,8 +486,9 @@ package main
 import (
 	"context"
 	"database/sql"
-	"github.com/miyamo2/pqxd"
 	"log"
+
+	"github.com/miyamo2/pqxd"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"

@@ -32,7 +32,7 @@ func Test_Connection_Ping(t *testing.T) {
 			},
 			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient {
 				client := internal.NewMockDynamoDBClient(ctrl)
-				client.EXPECT().DescribeEndpoints(ctx, nil).Times(1).Return(nil, nil)
+				client.EXPECT().ListTables(ctx, nil).Times(1).Return(nil, nil)
 				return client
 			},
 		},
@@ -43,7 +43,7 @@ func Test_Connection_Ping(t *testing.T) {
 			},
 			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient {
 				client := internal.NewMockDynamoDBClient(ctrl)
-				client.EXPECT().DescribeEndpoints(ctx, nil).Times(1).Return(nil, someErr)
+				client.EXPECT().ListTables(ctx, nil).Times(1).Return(nil, someErr)
 				return client
 			},
 			want: someErr,
@@ -58,7 +58,7 @@ func Test_Connection_Ping(t *testing.T) {
 			},
 			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient {
 				client := internal.NewMockDynamoDBClient(ctrl)
-				client.EXPECT().DescribeEndpoints(gomock.Any(), gomock.Any()).Times(0)
+				client.EXPECT().ListTables(gomock.Any(), gomock.Any()).Times(0)
 				return client
 			},
 			want: driver.ErrBadConn,
