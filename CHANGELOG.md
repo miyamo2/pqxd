@@ -1,3 +1,14 @@
+## 0.6.0 - 2025-09-23
+
+### 💥 Breaking Changes
+
+- `db.Ping` now calls ListTable API instead of DescribeEndpoints API
+
+### 🐛 Fix
+
+- Fixed an issue where SELECT statements without a selection list would fail to scan.  
+  However, we still recommend explicitly selecting columns as before.
+
 ## 0.5.0 - 2024-11-02
 
 ### ✨ New Features
