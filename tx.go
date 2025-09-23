@@ -1,10 +1,12 @@
 package pqxd
 
 import (
+	"context"
 	"database/sql/driver"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"log/slog"
 	"sync"
+
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 // compatibility check
@@ -19,7 +21,7 @@ func (c *connection) Commit() error {
 		slog.Warn("pqxd: commit was performed, but transaction is not ongoing")
 		return nil
 	}
-	c.txCommiter.Load().commit()
+	c.txCommit.Load().function()
 	return nil
 }
 
@@ -31,7 +33,7 @@ func (c *connection) Rollback() error {
 		slog.Warn("pqxd: rollback was performed, but transaction is not ongoing")
 		return nil
 	}
-	c.txRollbacker.Load().rollback()
+	c.txRollback.Load().function()
 	return nil
 }
 
@@ -55,58 +57,22 @@ func (p *transactionStatementPublisher) publish(inout *transactionInOut) {
 
 // close closes the channel.
 func (p *transactionStatementPublisher) close() {
-	p.closeOnce.Do(func() {
-		close(p.ch)
-	})
+	p.closeOnce.Do(
+		func() {
+			close(p.ch)
+		},
+	)
 }
 
-// transactionCommitter commits a transaction.
-type transactionCommitter struct {
-	ch         chan<- struct{}
-	done       <-chan struct{}
-	commitOnce sync.Once
-	closeOnce  sync.Once
+// txCommit represents a commit operation in a transaction.
+type txCommit struct {
+	ctx           context.Context
+	function      context.CancelFunc
+	receiveResult context.Context
 }
 
-// commit commits the transaction.
-func (c *transactionCommitter) commit() {
-	c.commitOnce.Do(func() {
-		c.ch <- struct{}{}
-		<-c.done
-	})
-}
-
-// close closes the channel.
-func (c *transactionCommitter) close() {
-	c.closeOnce.Do(func() {
-		close(c.ch)
-	})
-}
-
-// transactionRollbacker rolls back a transaction.
-type transactionRollbacker struct {
-	ch           chan<- struct{}
-	done         <-chan struct{}
-	rollbackOnce sync.Once
-	closeOnce    sync.Once
-}
-
-// rollback rolls back the transaction.
-func (r *transactionRollbacker) rollback() {
-	r.rollbackOnce.Do(func() {
-		r.ch <- struct{}{}
-		select {
-		case _, ok := <-r.done:
-			if ok {
-				return
-			}
-		}
-	})
-}
-
-// close closes the channel.
-func (r *transactionRollbacker) close() {
-	r.closeOnce.Do(func() {
-		close(r.ch)
-	})
+// txRollback represents a rollback operation in a transaction.
+type txRollback struct {
+	ctx      context.Context
+	function context.CancelFunc
 }

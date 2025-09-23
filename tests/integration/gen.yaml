@@ -1,0 +1,6 @@
+# gen.yaml
+services:
+  dynamodb:
+    - ListTables
+    - DescribeTable
+    - CreateTable

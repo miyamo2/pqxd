@@ -3,6 +3,11 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"os"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/avast/retry-go"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -10,14 +15,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/joho/godotenv"
 	"github.com/miyamo2/pqxd"
-	"os"
-	"testing"
-	"time"
 )
 
 var (
 	client *dynamodb.Client
 	db     *sql.DB
+
+	mu sync.Mutex
 )
 
 func init() {
@@ -45,15 +49,18 @@ func init() {
 		func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-			tb, err := client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
-				TableName: aws.String("test_tables"),
-			})
+			tb, err := client.DescribeTable(
+				ctx, &dynamodb.DescribeTableInput{
+					TableName: aws.String("test_tables"),
+				},
+			)
 			if err != nil {
 				return err
 			}
 			_ = tb
 			return nil
-		}, retry.Attempts(10))
+		}, retry.Attempts(10),
+	)
 	if err != nil {
 		panic(err)
 	}

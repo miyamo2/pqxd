@@ -3,13 +3,14 @@ package pqxd
 import (
 	"context"
 	"database/sql/driver"
+	"regexp"
+	"strings"
+
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/miyamo2/pqxd/internal"
 	"go.uber.org/atomic"
-	"regexp"
-	"strings"
 )
 
 // compatibility checks
@@ -37,11 +38,11 @@ type connection struct {
 	// txStmtPub publishes statements in a transaction
 	txStmtPub atomic.Pointer[transactionStatementPublisher]
 
-	// txCommiter commits the transaction
-	txCommiter atomic.Pointer[transactionCommitter]
+	// txCommit commits the transaction
+	txCommit atomic.Pointer[txCommit]
 
-	// txRollbacker rolls back the transaction
-	txRollbacker atomic.Pointer[transactionRollbacker]
+	// txRollback rollback the transaction
+	txRollback atomic.Pointer[txRollback]
 }
 
 // Ping See: driver.Pinger
@@ -85,7 +86,7 @@ func (c *connection) Close() error {
 	}
 	defer c.closed.Store(true)
 	if c.txOngoing.Load() {
-		c.txRollbacker.Load().rollback()
+		c.txRollback.Load().function()
 	}
 	return nil
 }
@@ -114,7 +115,7 @@ func (c *connection) ExecContext(ctx context.Context, query string, args []drive
 			},
 		}
 		c.txStmtPub.Load().publish(inout)
-		return newLazyResult(c.newTxGetAffected(inout)), nil
+		return newLazyResult(c.newTxGetAffected(inout, c.txCommit.Load())), nil
 	}
 
 	input := dynamodb.ExecuteStatementInput{
@@ -145,7 +146,7 @@ func (c *connection) QueryContext(ctx context.Context, query string, args []driv
 }
 
 // BeginTx See: driver.ConnBeginTx
-func (c *connection) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
+func (c *connection) BeginTx(ctx context.Context, _ driver.TxOptions) (driver.Tx, error) {
 	if c.closed.Load() {
 		return nil, driver.ErrBadConn
 	}
@@ -154,14 +155,26 @@ func (c *connection) BeginTx(ctx context.Context, opts driver.TxOptions) (driver
 	}
 
 	txStmtCh := make(chan *transactionInOut)
-	commitCh := make(chan struct{}, 1)
-	commitDone := make(chan struct{}, 1)
-	rollbackCh := make(chan struct{}, 1)
-	rollbackDone := make(chan struct{}, 1)
 
 	c.txStmtPub = *atomic.NewPointer(&transactionStatementPublisher{ch: txStmtCh})
-	c.txCommiter = *atomic.NewPointer(&transactionCommitter{ch: commitCh, done: commitDone})
-	c.txRollbacker = *atomic.NewPointer(&transactionRollbacker{ch: rollbackCh, done: rollbackDone})
+
+	commitCtx, commitFunc := context.WithCancel(ctx)
+	receiveResultCtx, receiveResultFunc := context.WithCancel(ctx)
+	c.txCommit = *atomic.NewPointer(
+		&txCommit{
+			ctx:           commitCtx,
+			function:      commitFunc,
+			receiveResult: receiveResultCtx,
+		},
+	)
+
+	rollBackCtx, rollbackFunc := context.WithCancel(ctx)
+	c.txRollback = *atomic.NewPointer(
+		&txRollback{
+			ctx:      rollBackCtx,
+			function: rollbackFunc,
+		},
+	)
 	c.txOngoing.Store(true)
 
 	go func() {
@@ -169,10 +182,9 @@ func (c *connection) BeginTx(ctx context.Context, opts driver.TxOptions) (driver
 		defer func() {
 			c.txOngoing.Store(false)
 			c.txStmtPub.Load().close()
-			c.txCommiter.Load().close()
-			close(commitDone)
-			c.txRollbacker.Load().close()
-			close(rollbackDone)
+			commitFunc()
+			rollbackFunc()
+			receiveResultFunc()
 		}()
 		for {
 			select {
@@ -180,15 +192,17 @@ func (c *connection) BeginTx(ctx context.Context, opts driver.TxOptions) (driver
 				// do nothing
 			case inout := <-txStmtCh:
 				inouts = append(inouts, inout)
-			case <-commitCh:
+			case <-commitCtx.Done():
 				var inputs []types.ParameterizedStatement
 				for _, inout := range inouts {
 					inputs = append(inputs, inout.input)
 				}
-				txResult, err := c.client.ExecuteTransaction(ctx, &dynamodb.ExecuteTransactionInput{
-					TransactStatements:     inputs,
-					ReturnConsumedCapacity: types.ReturnConsumedCapacityNone,
-				})
+				txResult, err := c.client.ExecuteTransaction(
+					ctx, &dynamodb.ExecuteTransactionInput{
+						TransactStatements:     inputs,
+						ReturnConsumedCapacity: types.ReturnConsumedCapacityNone,
+					},
+				)
 				if err != nil {
 					for _, inout := range inouts {
 						inout.err = err
@@ -199,7 +213,7 @@ func (c *connection) BeginTx(ctx context.Context, opts driver.TxOptions) (driver
 					inouts[i].output = resp.Item
 				}
 				return
-			case <-rollbackCh:
+			case <-rollBackCtx.Done():
 				return
 			case <-ctx.Done():
 				return
@@ -210,7 +224,9 @@ func (c *connection) BeginTx(ctx context.Context, opts driver.TxOptions) (driver
 }
 
 // query executes a query with given query-string, selected-list and arguments.
-func (c *connection) query(ctx context.Context, query string, selectedList []string, args []driver.NamedValue) (driver.Rows, error) {
+func (c *connection) query(
+	ctx context.Context, query string, selectedList []string, args []driver.NamedValue,
+) (driver.Rows, error) {
 	if c.closed.Load() {
 		return nil, driver.ErrBadConn
 	}
@@ -229,7 +245,7 @@ func (c *connection) query(ctx context.Context, query string, selectedList []str
 		}
 		fetch := c.newTxFetchClosure(inout)
 		c.txStmtPub.Load().publish(inout)
-		return newTxRows(selectedList, fetch, c.txCommiter.Load()), nil
+		return newTxRows(selectedList, fetch, c.txCommit.Load()), nil
 	}
 
 	input := dynamodb.ExecuteStatementInput{
@@ -391,7 +407,8 @@ func (c *connection) preparedStatementFromQueryString(query string) (stmt driver
 				countPlaceHolders(match, regx),
 				c.query,
 				c.ExecContext,
-				c.newCloseCheckClosure())
+				c.newCloseCheckClosure(),
+			)
 			return
 		}
 	}
@@ -402,7 +419,8 @@ func (c *connection) preparedStatementFromQueryString(query string) (stmt driver
 			countPlaceHolders(match, reINSERT),
 			c.query,
 			c.ExecContext,
-			c.newCloseCheckClosure())
+			c.newCloseCheckClosure(),
+		)
 		return
 	}
 	if match := reDescribeTable.FindStringSubmatch(query); len(match) > 0 {
@@ -415,7 +433,8 @@ func (c *connection) preparedStatementFromQueryString(query string) (stmt driver
 				return c.describeTable(ctx, tq.describeTableTarget, tq.selectedList, args)
 			},
 			c.ExecContext,
-			c.newCloseCheckClosure())
+			c.newCloseCheckClosure(),
+		)
 		return
 	}
 	if match := reListTable.FindStringSubmatch(query); len(match) > 0 {
@@ -427,7 +446,8 @@ func (c *connection) preparedStatementFromQueryString(query string) (stmt driver
 				return c.listTables(ctx)
 			},
 			c.ExecContext,
-			c.newCloseCheckClosure())
+			c.newCloseCheckClosure(),
+		)
 		return
 	}
 	err = ErrInvalidPreparedStatement
@@ -484,10 +504,15 @@ func (c *connection) newTxFetchClosure(inOut *transactionInOut) fetchClosure {
 }
 
 // newTxGetAffected returns closure for getting affected rows in a transaction
-func (c *connection) newTxGetAffected(inOut *transactionInOut) func() (int64, error) {
+func (c *connection) newTxGetAffected(inOut *transactionInOut, txCommit *txCommit) func() (int64, error) {
 	return func() (int64, error) {
-		if c.txOngoing.Load() {
-			return 0, nil
+		select {
+		case <-txCommit.ctx.Done():
+			<-txCommit.receiveResult.Done()
+		default:
+			if c.txOngoing.Load() {
+				return 0, nil
+			}
 		}
 		if inOut.err != nil {
 			return 0, inOut.err
@@ -521,7 +546,11 @@ func tokenize(query string) (tq tokenizedQuery) {
 		return
 	}
 	if match := reRETURNING.FindStringSubmatch(query); len(match) > 0 {
-		tq.selectedList, tq.selectedListString = selectedListFromMatchString(match, reRETURNING, namedCaptureKeyRETURNINGSelectedList)
+		tq.selectedList, tq.selectedListString = selectedListFromMatchString(
+			match,
+			reRETURNING,
+			namedCaptureKeyRETURNINGSelectedList,
+		)
 		idx := reRETURNING.SubexpIndex(namedCaptureKeyRETURNINGSelectedList)
 		if idx == -1 {
 			tq = tokenizedQuery{}
@@ -552,7 +581,9 @@ func tokenize(query string) (tq tokenizedQuery) {
 }
 
 // selectedListFromMatchString extracts selected list from the match string
-func selectedListFromMatchString(match []string, regex *regexp.Regexp, namedCaptureKey string) (columns []string, rawSelectedList string) {
+func selectedListFromMatchString(match []string, regex *regexp.Regexp, namedCaptureKey string) (
+	columns []string, rawSelectedList string,
+) {
 	index := regex.SubexpIndex(namedCaptureKey)
 	if index == -1 {
 		return

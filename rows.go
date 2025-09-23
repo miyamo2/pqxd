@@ -3,13 +3,14 @@ package pqxd
 import (
 	"context"
 	"database/sql/driver"
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"go.uber.org/atomic"
 	"io"
 	"maps"
 	"slices"
 	"sync"
+
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"go.uber.org/atomic"
 )
 
 // compatibility check
@@ -27,19 +28,19 @@ type pqxdRows struct {
 	columnNames []string
 
 	// nextToken See: https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/dynamodb#ExecuteStatementInput
-	nextToken atomic.Pointer[string]
+	nextToken *atomic.Pointer[string]
 
 	// fetch fetches the next result set.
 	fetch fetchClosure
 
 	// fetchCancel cancels the ongoing fetch operation.
-	fetchCancel atomic.Pointer[context.CancelFunc]
+	fetchCancel *atomic.Pointer[context.CancelFunc]
 
 	// out is the current result set.
-	out atomic.Pointer[[]map[string]types.AttributeValue]
+	out *atomic.Pointer[[]map[string]types.AttributeValue]
 
 	// outCursor is the current cursor position in the result set.
-	outCursor atomic.Uint32
+	outCursor *atomic.Uint32
 }
 
 // Next See: driver.Rows
@@ -53,13 +54,7 @@ func (r *pqxdRows) Next(dest []driver.Value) error {
 	row := out[cursor]
 	r.outCursor.Store(r.outCursor.Inc())
 
-	columns := r.Columns()
-	if len(columns) == 0 {
-		columns = slices.Collect(maps.Keys(row))
-		slices.Sort(columns)
-	}
-
-	for i, col := range columns {
+	for i, col := range r.columnNames {
 		var value any
 		colVal, ok := row[col]
 		if !ok {
@@ -129,15 +124,25 @@ func (r *pqxdRows) Close() (err error) {
 }
 
 // newRows returns a new pqxdRows
-func newRows(columnNames []string, nextToken *string, fetch fetchClosure, out []map[string]types.AttributeValue) *pqxdRows {
+func newRows(
+	columnNames []string, nextToken *string, fetch fetchClosure, out []map[string]types.AttributeValue,
+) *pqxdRows {
 	if len(columnNames) == 1 && columnNames[0] == "*" {
-		columnNames = nil
+		keys := make(map[string]struct{}, len(out))
+		for _, v := range out {
+			for k := range v {
+				keys[k] = struct{}{}
+			}
+		}
+		columnNames = slices.Sorted(maps.Keys(keys))
 	}
 	return &pqxdRows{
 		columnNames: columnNames,
-		nextToken:   *atomic.NewPointer(nextToken),
+		nextToken:   atomic.NewPointer(nextToken),
 		fetch:       fetch,
-		out:         *atomic.NewPointer(&out),
+		fetchCancel: atomic.NewPointer[context.CancelFunc](nil),
+		out:         atomic.NewPointer(&out),
+		outCursor:   atomic.NewUint32(0),
 	}
 }
 
@@ -148,7 +153,7 @@ type txRows struct {
 	pqxdRows
 
 	// txCommiter commits the transaction
-	txCommiter *transactionCommitter
+	txCommiter *txCommit
 
 	once sync.Once
 }
@@ -161,29 +166,34 @@ func (r *txRows) Next(dest []driver.Value) error {
 }
 
 func (r *txRows) HasNextResultSet() bool {
-	r.txCommiter.commit()
+	r.txCommiter.function()
 	return r.pqxdRows.HasNextResultSet()
 }
 
 func (r *txRows) NextResultSet() error {
-	r.txCommiter.commit()
+	r.txCommiter.function()
 	var err error
-	r.once.Do(func() {
-		err = r.pqxdRows.NextResultSet()
-	})
+	r.once.Do(
+		func() {
+			<-r.txCommiter.receiveResult.Done()
+			err = r.pqxdRows.NextResultSet()
+		},
+	)
 	return err
 }
 
 // newTxRows returns a new txRows
-func newTxRows(columnNames []string, fetch fetchClosure, txCommiter *transactionCommitter) *txRows {
+func newTxRows(columnNames []string, fetch fetchClosure, txCommit *txCommit) *txRows {
 	return &txRows{
 		pqxdRows: pqxdRows{
 			columnNames: columnNames,
-			nextToken:   *atomic.NewPointer(new(string)),
+			nextToken:   atomic.NewPointer[string](new(string)),
 			fetch:       fetch,
-			out:         *atomic.NewPointer(new([]map[string]types.AttributeValue)),
+			fetchCancel: atomic.NewPointer[context.CancelFunc](nil),
+			out:         atomic.NewPointer(new([]map[string]types.AttributeValue)),
+			outCursor:   atomic.NewUint32(0),
 		},
-		txCommiter: txCommiter,
+		txCommiter: txCommit,
 		once:       sync.Once{},
 	}
 }

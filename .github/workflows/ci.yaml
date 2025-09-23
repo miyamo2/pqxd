@@ -22,16 +22,16 @@ jobs:
         goversion: ["1.23.0"]
     services:
       localstack:
-        image: localstack/localstack:latest
+        image: amazon/dynamodb-local:latest
         env:
           SERVICES: dynamodb
         ports:
-          - 4566:4566
+          - 8000:8000
     env:
       AWS_ACCESS_KEY_ID: ABC1234567890
       AWS_SECRET_ACCESS_KEY: ABC1234567890
       AWS_REGION: ap-northeast-1
-      DYNAMODB_ENDPOINT: http://127.0.0.1:4566
+      DYNAMODB_ENDPOINT: http://127.0.0.1:8000
 
     steps:
       - uses: Kesin11/actions-timeline@v2
