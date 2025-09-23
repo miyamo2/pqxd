@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
+	"testing"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -11,7 +13,6 @@ import (
 	"github.com/miyamo2/pqxd/internal"
 	"go.uber.org/atomic"
 	"go.uber.org/mock/gomock"
-	"testing"
 )
 
 func Test_Connection_Ping(t *testing.T) {
@@ -65,17 +66,19 @@ func Test_Connection_Ping(t *testing.T) {
 	}
 
 	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+		t.Run(
+			name, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				defer ctrl.Finish()
 
-			client := tt.dynamoDBClient(tt.ctx, ctrl)
-			sut := tt.sut(client)
-			got := sut.Ping(tt.ctx)
-			if !errors.Is(tt.want, got) {
-				t.Errorf("Ping() = %v, want %v", got, tt.want)
-			}
-		})
+				client := tt.dynamoDBClient(tt.ctx, ctrl)
+				sut := tt.sut(client)
+				got := sut.Ping(tt.ctx)
+				if !errors.Is(tt.want, got) {
+					t.Errorf("Ping() = %v, want %v", got, tt.want)
+				}
+			},
+		)
 	}
 }
 
@@ -134,17 +137,19 @@ func Test_Connection_Close(t *testing.T) {
 	}
 
 	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+		t.Run(
+			name, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				defer ctrl.Finish()
 
-			client := tt.dynamoDBClient(tt.ctx, ctrl)
-			sut := tt.sut(client)
-			got := sut.Close()
-			if !errors.Is(tt.want, got) {
-				t.Errorf("Close() = %v, want %v", got, tt.want)
-			}
-		})
+				client := tt.dynamoDBClient(tt.ctx, ctrl)
+				sut := tt.sut(client)
+				got := sut.Close()
+				if !errors.Is(tt.want, got) {
+					t.Errorf("function() = %v, want %v", got, tt.want)
+				}
+			},
+		)
 	}
 }
 
@@ -254,31 +259,37 @@ func Test_pqxdRows_QueryContext(t *testing.T) {
 	}
 
 	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+		t.Run(
+			name, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				defer ctrl.Finish()
 
-			qArgs := tt.args
-			input := dynamodb.ExecuteStatementInput{
-				Statement:  &qArgs.query,
-				Parameters: MustPartiQLParameters(t, qArgs.args),
-			}
+				qArgs := tt.args
+				input := dynamodb.ExecuteStatementInput{
+					Statement:  &qArgs.query,
+					Parameters: MustPartiQLParameters(t, qArgs.args),
+				}
 
-			client := MockDynamoDBClient(t, ctrl, MockDynamoDBClientWithExecuteStatement(t, input, tt.executeStatementResults))
-			sut := tt.sut(client)
+				client := MockDynamoDBClient(
+					t,
+					ctrl,
+					MockDynamoDBClientWithExecuteStatement(t, input, tt.executeStatementResults),
+				)
+				sut := tt.sut(client)
 
-			got, err := sut.QueryContext(tt.ctx, qArgs.query, qArgs.args)
-			if !errors.Is(err, tt.want.err) {
-				t.Errorf("QueryContext().error %+v, want %+v", err, tt.want.err)
-			}
-			results, err := GetAllResultSet(t, got)
-			if err != nil {
-				t.Fatalf("failed to scan results: %v", err)
-				return
-			}
-			if diff := cmp.Diff(tt.want.resultSets, results, CmpAttributeValuesOpt...); diff != "" {
-				t.Errorf("QueryContext().out mismatch (-want +got):\n%s", diff)
-			}
-		})
+				got, err := sut.QueryContext(tt.ctx, qArgs.query, qArgs.args)
+				if !errors.Is(err, tt.want.err) {
+					t.Errorf("QueryContext().error %+v, want %+v", err, tt.want.err)
+				}
+				results, err := GetAllResultSet(t, got)
+				if err != nil {
+					t.Fatalf("failed to scan results: %v", err)
+					return
+				}
+				if diff := cmp.Diff(tt.want.resultSets, results, CmpAttributeValuesOpt...); diff != "" {
+					t.Errorf("QueryContext().out mismatch (-want +got):\n%s", diff)
+				}
+			},
+		)
 	}
 }

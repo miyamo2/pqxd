@@ -1,7 +1,6 @@
 services:
-  localstack:
-    image: localstack/localstack:latest
-    environment:
-      SERVICES: dynamodb
+  dynamodb-local:
+    image: "amazon/dynamodb-local:latest"
+    container_name: dynamodb-local
     ports:
-      - 4566:4566
+      - "8000:8000"
