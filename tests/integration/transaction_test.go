@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/miyamo2/pqxd"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -39,7 +38,7 @@ func (s *QueryTransactionTestSuite) SetupSubTest() {
 		TransactItems: items,
 	}
 	_, err := s.client.TransactWriteItems(context.Background(), input)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 }
 
 func (s *QueryTransactionTestSuite) TearDownSubTest() {
@@ -53,7 +52,7 @@ func (s *QueryTransactionTestSuite) TearDownSubTest() {
 			TableName: aws.String("test_tables"),
 		}
 		_, err := s.client.DeleteItem(context.Background(), input)
-		require.NoError(s.T(), err)
+		s.Require().NoError(err)
 	}
 }
 
@@ -62,7 +61,7 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryRowContext() {
 		"query-once", func() {
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			row := tx.QueryRowContext(
 				context.Background(),
@@ -85,20 +84,20 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryRowContext() {
 				gsiSk string
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 	s.Run(
 		"query-twice", func() {
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			row := tx.QueryRowContext(
 				context.Background(),
@@ -121,11 +120,11 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryRowContext() {
 				gsiSk string
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
 			row2 := tx.QueryRowContext(
 				context.Background(),
@@ -142,20 +141,20 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryRowContext() {
 			}
 			pk, sk, gsiPk, gsiSk = "", 0, "", ""
 
-			require.NoError(s.T(), row2.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row2.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 	s.Run(
 		"with-query-context", func() {
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			row := tx.QueryRowContext(
 				context.Background(),
@@ -178,13 +177,13 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryRowContext() {
 				gsiSk string
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 }
@@ -194,7 +193,7 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryRow() {
 		"query-once", func() {
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			row := tx.QueryRow(
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
@@ -216,20 +215,20 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryRow() {
 				gsiSk string
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 	s.Run(
 		"query-twice", func() {
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			row := tx.QueryRow(
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
@@ -251,11 +250,11 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryRow() {
 				gsiSk string
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
 			row2 := tx.QueryRow(
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
@@ -271,20 +270,20 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryRow() {
 			}
 			pk, sk, gsiPk, gsiSk = "", 0, "", ""
 
-			require.NoError(s.T(), row2.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row2.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 	s.Run(
 		"with-query-context", func() {
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			row := tx.QueryRow(
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
@@ -306,13 +305,13 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryRow() {
 				gsiSk string
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 }
@@ -322,7 +321,7 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryContext() {
 		"query-once", func() {
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows, err := tx.QueryContext(
 				context.Background(),
@@ -330,7 +329,7 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryContext() {
 				"QueryTestTransactionTestSuite",
 				10,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -350,24 +349,24 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 	s.Run(
 		"query-twice", func() {
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows, err := tx.QueryContext(
 				context.Background(),
@@ -375,7 +374,7 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryContext() {
 				"QueryTestTransactionTestSuite",
 				10,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows2, err := tx.QueryContext(
 				context.Background(),
@@ -383,7 +382,7 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryContext() {
 				"QueryTestTransactionTestSuite",
 				30,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -403,15 +402,15 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
 			expect = []TestTables{
 				{
@@ -432,17 +431,17 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_QueryContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows2.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows2.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 }
@@ -452,7 +451,7 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryRowContext() {
 		"query-once", func() {
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			row := tx.QueryRowContext(
 				context.Background(),
@@ -475,20 +474,20 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryRowContext() {
 				gsiSk string
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 	s.Run(
 		"query-twice", func() {
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			row := tx.QueryRowContext(
 				context.Background(),
@@ -511,11 +510,11 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryRowContext() {
 				gsiSk string
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
 			row2 := tx.QueryRowContext(
 				context.Background(),
@@ -532,20 +531,20 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryRowContext() {
 			}
 			pk, sk, gsiPk, gsiSk = "", 0, "", ""
 
-			require.NoError(s.T(), row2.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row2.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 	s.Run(
 		"with-query-context", func() {
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			row := tx.QueryRowContext(
 				context.Background(),
@@ -568,13 +567,13 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryRowContext() {
 				gsiSk string
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 }
@@ -584,7 +583,7 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryRow() {
 		"query-once", func() {
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			row := tx.QueryRow(
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
@@ -606,20 +605,20 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryRow() {
 				gsiSk string
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 	s.Run(
 		"query-twice", func() {
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			row := tx.QueryRow(
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
@@ -641,11 +640,11 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryRow() {
 				gsiSk string
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
 			row2 := tx.QueryRow(
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
@@ -661,20 +660,20 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryRow() {
 			}
 			pk, sk, gsiPk, gsiSk = "", 0, "", ""
 
-			require.NoError(s.T(), row2.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row2.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 	s.Run(
 		"with-query-context", func() {
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			row := tx.QueryRow(
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
@@ -696,13 +695,13 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryRow() {
 				gsiSk string
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 }
@@ -712,7 +711,7 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryContext() {
 		"query-once", func() {
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows, err := tx.QueryContext(
 				context.Background(),
@@ -720,7 +719,7 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryContext() {
 				"QueryTestTransactionTestSuite",
 				10,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -740,17 +739,17 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 
@@ -758,7 +757,7 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryContext() {
 		"query-twice", func() {
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows, err := tx.QueryContext(
 				context.Background(),
@@ -766,7 +765,7 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryContext() {
 				"QueryTestTransactionTestSuite",
 				10,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows2, err := tx.QueryContext(
 				context.Background(),
@@ -774,7 +773,7 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryContext() {
 				"QueryTestTransactionTestSuite",
 				30,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -794,15 +793,15 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
 			expect = []TestTables{
 				{
@@ -823,17 +822,17 @@ func (s *QueryTransactionTestSuite) Test_Begin_QueryContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows2.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows2.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 }
@@ -843,14 +842,14 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_Query() {
 		"query-once", func() {
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows, err := tx.Query(
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
 				"QueryTestTransactionTestSuite",
 				10,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -870,38 +869,38 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_Query() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 	s.Run(
 		"query-twice", func() {
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows, err := tx.Query(
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
 				"QueryTestTransactionTestSuite",
 				10,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows2, err := tx.Query(
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
 				"QueryTestTransactionTestSuite",
 				30,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -921,15 +920,15 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_Query() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
 			expect = []TestTables{
 				{
@@ -950,17 +949,17 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_Query() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows2.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows2.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 }
@@ -970,14 +969,14 @@ func (s *QueryTransactionTestSuite) Test_Begin_Query() {
 		"query-once", func() {
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows, err := tx.Query(
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
 				"QueryTestTransactionTestSuite",
 				10,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -997,17 +996,17 @@ func (s *QueryTransactionTestSuite) Test_Begin_Query() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 
@@ -1015,21 +1014,21 @@ func (s *QueryTransactionTestSuite) Test_Begin_Query() {
 		"query-twice", func() {
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows, err := tx.Query(
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
 				"QueryTestTransactionTestSuite",
 				10,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows2, err := tx.Query(
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
 				"QueryTestTransactionTestSuite",
 				30,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -1049,15 +1048,15 @@ func (s *QueryTransactionTestSuite) Test_Begin_Query() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
 			expect = []TestTables{
 				{
@@ -1078,17 +1077,17 @@ func (s *QueryTransactionTestSuite) Test_Begin_Query() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows2.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows2.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 }
@@ -1098,16 +1097,16 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_PrepareContext() {
 		"query-once", func() {
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			stmt, err := tx.PrepareContext(
 				context.Background(),
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows, err := stmt.QueryContext(context.Background(), "QueryTestTransactionTestSuite", 10)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -1127,36 +1126,36 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_PrepareContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 	s.Run(
 		"query-twice", func() {
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			stmt, err := tx.PrepareContext(
 				context.Background(),
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows, err := stmt.QueryContext(context.Background(), "QueryTestTransactionTestSuite", 10)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows2, err := stmt.QueryContext(context.Background(), "QueryTestTransactionTestSuite", 30)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -1176,15 +1175,15 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_PrepareContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
 			expect = []TestTables{
 				{
@@ -1205,17 +1204,17 @@ func (s *QueryTransactionTestSuite) Test_BeginTx_PrepareContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows2.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows2.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 }
@@ -1225,16 +1224,16 @@ func (s *QueryTransactionTestSuite) Test_Begin_PrepareContext() {
 		"query-once", func() {
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			stmt, err := tx.PrepareContext(
 				context.Background(),
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows, err := stmt.QueryContext(context.Background(), "QueryTestTransactionTestSuite", 10)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -1254,17 +1253,17 @@ func (s *QueryTransactionTestSuite) Test_Begin_PrepareContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 
@@ -1272,19 +1271,19 @@ func (s *QueryTransactionTestSuite) Test_Begin_PrepareContext() {
 		"query-twice", func() {
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			stmt, err := tx.PrepareContext(
 				context.Background(),
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows, err := stmt.QueryContext(context.Background(), "QueryTestTransactionTestSuite", 10)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rows2, err := stmt.QueryContext(context.Background(), "QueryTestTransactionTestSuite", 30)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -1304,15 +1303,15 @@ func (s *QueryTransactionTestSuite) Test_Begin_PrepareContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
 			expect = []TestTables{
 				{
@@ -1333,17 +1332,17 @@ func (s *QueryTransactionTestSuite) Test_Begin_PrepareContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows2.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows2.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 		},
 	)
 }
@@ -1450,7 +1449,7 @@ func (s *ExecTransactionTestSuite) TearDownSubTest() {
 				ExclusiveStartKey: lastEvaluatedKey,
 			},
 		)
-		require.NoError(s.T(), err)
+		s.Require().NoError(err)
 		registeredData = append(registeredData, queryOutput.Items...)
 		lastEvaluatedKey = queryOutput.LastEvaluatedKey
 		if len(lastEvaluatedKey) == 0 {
@@ -1466,7 +1465,7 @@ func (s *ExecTransactionTestSuite) TearDownSubTest() {
 			TableName: aws.String("test_tables"),
 		}
 		_, err := s.client.DeleteItem(context.Background(), input)
-		require.NoError(s.T(), err)
+		s.Require().NoError(err)
 	}
 }
 
@@ -1475,7 +1474,7 @@ func (s *ExecTransactionTestSuite) Test_Begin_ExecContext() {
 		"insert/common", func() {
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			result, err := tx.ExecContext(
 				context.Background(),
@@ -1485,11 +1484,11 @@ func (s *ExecTransactionTestSuite) Test_Begin_ExecContext() {
 				"ExecTransactionTestSuite1",
 				"1",
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rowAffected, err := result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(0), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(0), rowAffected)
 
 			queryInput := &dynamodb.QueryInput{
 				TableName:              aws.String("test_tables"),
@@ -1505,17 +1504,17 @@ func (s *ExecTransactionTestSuite) Test_Begin_ExecContext() {
 			}
 
 			queryOutput, err := s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 0)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 0)
 
 			lastInsertedID, err := result.LastInsertId()
-			require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
-			require.Equal(s.T(), int64(0), lastInsertedID)
+			s.Require().ErrorIs(err, pqxd.ErrNotSupported)
+			s.Require().Equal(int64(0), lastInsertedID)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 			rowAffected, err = result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(1), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(1), rowAffected)
 
 			expect := []TestTables{
 				{
@@ -1527,12 +1526,12 @@ func (s *ExecTransactionTestSuite) Test_Begin_ExecContext() {
 			}
 
 			queryOutput, err = s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 1)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 1)
 
 			var actual []TestTables
 			attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-			require.Exactly(s.T(), expect, actual)
+			s.Require().Exactly(expect, actual)
 		},
 	)
 
@@ -1549,7 +1548,7 @@ func (s *ExecTransactionTestSuite) Test_Begin_ExecContext() {
 
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			result, err := tx.ExecContext(
 				context.Background(),
@@ -1559,11 +1558,11 @@ func (s *ExecTransactionTestSuite) Test_Begin_ExecContext() {
 				"ExecTransactionTestSuite",
 				1,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rowAffected, err := result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(0), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(0), rowAffected)
 
 			expect := []TestTables{
 				{
@@ -1588,21 +1587,21 @@ func (s *ExecTransactionTestSuite) Test_Begin_ExecContext() {
 			}
 
 			queryOutput, err := s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 1)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 1)
 
 			var actual []TestTables
 			attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-			require.Exactly(s.T(), expect, actual)
+			s.Require().Exactly(expect, actual)
 
 			lastInsertedID, err := result.LastInsertId()
-			require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
-			require.Equal(s.T(), int64(0), lastInsertedID)
+			s.Require().ErrorIs(err, pqxd.ErrNotSupported)
+			s.Require().Equal(int64(0), lastInsertedID)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 			rowAffected, err = result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(1), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(1), rowAffected)
 
 			expect = []TestTables{
 				{
@@ -1614,12 +1613,12 @@ func (s *ExecTransactionTestSuite) Test_Begin_ExecContext() {
 			}
 
 			queryOutput, err = s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 1)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 1)
 
 			actual = make([]TestTables, 0)
 			attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-			require.Exactly(s.T(), expect, actual)
+			s.Require().Exactly(expect, actual)
 		},
 	)
 
@@ -1636,7 +1635,7 @@ func (s *ExecTransactionTestSuite) Test_Begin_ExecContext() {
 
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			result, err := tx.ExecContext(
 				context.Background(),
@@ -1644,11 +1643,11 @@ func (s *ExecTransactionTestSuite) Test_Begin_ExecContext() {
 				"ExecTransactionTestSuite",
 				1.0,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rowAffected, err := result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(0), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(0), rowAffected)
 
 			queryInput := &dynamodb.QueryInput{
 				TableName:              aws.String("test_tables"),
@@ -1664,21 +1663,21 @@ func (s *ExecTransactionTestSuite) Test_Begin_ExecContext() {
 			}
 
 			queryOutput, err := s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 0)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 0)
 
 			lastInsertedID, err := result.LastInsertId()
-			require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
-			require.Equal(s.T(), int64(0), lastInsertedID)
+			s.Require().ErrorIs(err, pqxd.ErrNotSupported)
+			s.Require().Equal(int64(0), lastInsertedID)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 			rowAffected, err = result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(1), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(1), rowAffected)
 
 			queryOutput, err = s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 0)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 0)
 		},
 	)
 }
@@ -1688,7 +1687,7 @@ func (s *ExecTransactionTestSuite) Test_Begin_Exec() {
 		"insert/common", func() {
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			result, err := tx.Exec(
 				`INSERT INTO "test_tables" VALUE {'pk': ?, 'sk': ?, 'gsi_pk': ?, 'gsi_sk': ?}`,
@@ -1697,11 +1696,11 @@ func (s *ExecTransactionTestSuite) Test_Begin_Exec() {
 				"ExecTransactionTestSuite1",
 				"1",
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rowAffected, err := result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(0), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(0), rowAffected)
 
 			queryInput := &dynamodb.QueryInput{
 				TableName:              aws.String("test_tables"),
@@ -1717,17 +1716,17 @@ func (s *ExecTransactionTestSuite) Test_Begin_Exec() {
 			}
 
 			queryOutput, err := s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 0)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 0)
 
 			lastInsertedID, err := result.LastInsertId()
-			require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
-			require.Equal(s.T(), int64(0), lastInsertedID)
+			s.Require().ErrorIs(err, pqxd.ErrNotSupported)
+			s.Require().Equal(int64(0), lastInsertedID)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 			rowAffected, err = result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(1), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(1), rowAffected)
 
 			expect := []TestTables{
 				{
@@ -1739,12 +1738,12 @@ func (s *ExecTransactionTestSuite) Test_Begin_Exec() {
 			}
 
 			queryOutput, err = s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 1)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 1)
 
 			var actual []TestTables
 			attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-			require.Exactly(s.T(), expect, actual)
+			s.Require().Exactly(expect, actual)
 		},
 	)
 
@@ -1761,7 +1760,7 @@ func (s *ExecTransactionTestSuite) Test_Begin_Exec() {
 
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			result, err := tx.Exec(
 				`UPDATE "test_tables" SET gsi_pk=? SET gsi_sk=? WHERE pk=? AND sk=?`,
@@ -1770,11 +1769,11 @@ func (s *ExecTransactionTestSuite) Test_Begin_Exec() {
 				"ExecTransactionTestSuite",
 				1,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rowAffected, err := result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(0), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(0), rowAffected)
 
 			expect := []TestTables{
 				{
@@ -1799,21 +1798,21 @@ func (s *ExecTransactionTestSuite) Test_Begin_Exec() {
 			}
 
 			queryOutput, err := s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 1)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 1)
 
 			var actual []TestTables
 			attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-			require.Exactly(s.T(), expect, actual)
+			s.Require().Exactly(expect, actual)
 
 			lastInsertedID, err := result.LastInsertId()
-			require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
-			require.Equal(s.T(), int64(0), lastInsertedID)
+			s.Require().ErrorIs(err, pqxd.ErrNotSupported)
+			s.Require().Equal(int64(0), lastInsertedID)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 			rowAffected, err = result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(1), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(1), rowAffected)
 
 			expect = []TestTables{
 				{
@@ -1825,12 +1824,12 @@ func (s *ExecTransactionTestSuite) Test_Begin_Exec() {
 			}
 
 			queryOutput, err = s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 1)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 1)
 
 			actual = make([]TestTables, 0)
 			attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-			require.Exactly(s.T(), expect, actual)
+			s.Require().Exactly(expect, actual)
 		},
 	)
 
@@ -1847,14 +1846,14 @@ func (s *ExecTransactionTestSuite) Test_Begin_Exec() {
 
 			db := GetDB(s.T())
 			tx, err := db.Begin()
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			result, err := tx.Exec(`DELETE FROM "test_tables" WHERE pk=? AND sk=?`, "ExecTransactionTestSuite", 1.0)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rowAffected, err := result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(0), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(0), rowAffected)
 
 			queryInput := &dynamodb.QueryInput{
 				TableName:              aws.String("test_tables"),
@@ -1870,21 +1869,21 @@ func (s *ExecTransactionTestSuite) Test_Begin_Exec() {
 			}
 
 			queryOutput, err := s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 1)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 1)
 
 			lastInsertedID, err := result.LastInsertId()
-			require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
-			require.Equal(s.T(), int64(0), lastInsertedID)
+			s.Require().ErrorIs(err, pqxd.ErrNotSupported)
+			s.Require().Equal(int64(0), lastInsertedID)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 			rowAffected, err = result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(1), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(1), rowAffected)
 
 			queryOutput, err = s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 0)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 0)
 		},
 	)
 }
@@ -1894,7 +1893,7 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_ExecContext() {
 		"insert/common", func() {
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			result, err := tx.ExecContext(
 				context.Background(),
@@ -1904,11 +1903,11 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_ExecContext() {
 				"ExecTransactionTestSuite1",
 				"1",
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rowAffected, err := result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(0), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(0), rowAffected)
 
 			queryInput := &dynamodb.QueryInput{
 				TableName:              aws.String("test_tables"),
@@ -1924,17 +1923,17 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_ExecContext() {
 			}
 
 			queryOutput, err := s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 0)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 0)
 
 			lastInsertedID, err := result.LastInsertId()
-			require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
-			require.Equal(s.T(), int64(0), lastInsertedID)
+			s.Require().ErrorIs(err, pqxd.ErrNotSupported)
+			s.Require().Equal(int64(0), lastInsertedID)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 			rowAffected, err = result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(1), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(1), rowAffected)
 
 			expect := []TestTables{
 				{
@@ -1946,12 +1945,12 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_ExecContext() {
 			}
 
 			queryOutput, err = s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 1)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 1)
 
 			var actual []TestTables
 			attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-			require.Exactly(s.T(), expect, actual)
+			s.Require().Exactly(expect, actual)
 		},
 	)
 
@@ -1968,7 +1967,7 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_ExecContext() {
 
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			result, err := tx.ExecContext(
 				context.Background(),
@@ -1978,11 +1977,11 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_ExecContext() {
 				"ExecTransactionTestSuite",
 				1,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rowAffected, err := result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(0), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(0), rowAffected)
 
 			expect := []TestTables{
 				{
@@ -2007,21 +2006,21 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_ExecContext() {
 			}
 
 			queryOutput, err := s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 1)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 1)
 
 			var actual []TestTables
 			attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-			require.Exactly(s.T(), expect, actual)
+			s.Require().Exactly(expect, actual)
 
 			lastInsertedID, err := result.LastInsertId()
-			require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
-			require.Equal(s.T(), int64(0), lastInsertedID)
+			s.Require().ErrorIs(err, pqxd.ErrNotSupported)
+			s.Require().Equal(int64(0), lastInsertedID)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 			rowAffected, err = result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(1), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(1), rowAffected)
 
 			expect = []TestTables{
 				{
@@ -2033,12 +2032,12 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_ExecContext() {
 			}
 
 			queryOutput, err = s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 1)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 1)
 
 			actual = make([]TestTables, 0)
 			attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-			require.Exactly(s.T(), expect, actual)
+			s.Require().Exactly(expect, actual)
 		},
 	)
 
@@ -2055,7 +2054,7 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_ExecContext() {
 
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			result, err := tx.ExecContext(
 				context.Background(),
@@ -2063,11 +2062,11 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_ExecContext() {
 				"ExecTransactionTestSuite",
 				1.0,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rowAffected, err := result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(0), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(0), rowAffected)
 
 			queryInput := &dynamodb.QueryInput{
 				TableName:              aws.String("test_tables"),
@@ -2083,21 +2082,21 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_ExecContext() {
 			}
 
 			queryOutput, err := s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 0)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 0)
 
 			lastInsertedID, err := result.LastInsertId()
-			require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
-			require.Equal(s.T(), int64(0), lastInsertedID)
+			s.Require().ErrorIs(err, pqxd.ErrNotSupported)
+			s.Require().Equal(int64(0), lastInsertedID)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 			rowAffected, err = result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(1), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(1), rowAffected)
 
 			queryOutput, err = s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 0)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 0)
 		},
 	)
 }
@@ -2107,7 +2106,7 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_Exec() {
 		"insert/common", func() {
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			result, err := tx.Exec(
 				`INSERT INTO "test_tables" VALUE {'pk': ?, 'sk': ?, 'gsi_pk': ?, 'gsi_sk': ?}`,
@@ -2116,11 +2115,11 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_Exec() {
 				"ExecTransactionTestSuite1",
 				"1",
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rowAffected, err := result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(0), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(0), rowAffected)
 
 			queryInput := &dynamodb.QueryInput{
 				TableName:              aws.String("test_tables"),
@@ -2136,17 +2135,17 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_Exec() {
 			}
 
 			queryOutput, err := s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 0)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 0)
 
 			lastInsertedID, err := result.LastInsertId()
-			require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
-			require.Equal(s.T(), int64(0), lastInsertedID)
+			s.Require().ErrorIs(err, pqxd.ErrNotSupported)
+			s.Require().Equal(int64(0), lastInsertedID)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 			rowAffected, err = result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(1), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(1), rowAffected)
 
 			expect := []TestTables{
 				{
@@ -2158,12 +2157,12 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_Exec() {
 			}
 
 			queryOutput, err = s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 1)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 1)
 
 			var actual []TestTables
 			attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-			require.Exactly(s.T(), expect, actual)
+			s.Require().Exactly(expect, actual)
 		},
 	)
 
@@ -2180,7 +2179,7 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_Exec() {
 
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			result, err := tx.Exec(
 				`UPDATE "test_tables" SET gsi_pk=? SET gsi_sk=? WHERE pk=? AND sk=?`,
@@ -2189,11 +2188,11 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_Exec() {
 				"ExecTransactionTestSuite",
 				1,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rowAffected, err := result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(0), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(0), rowAffected)
 
 			expect := []TestTables{
 				{
@@ -2218,21 +2217,21 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_Exec() {
 			}
 
 			queryOutput, err := s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 1)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 1)
 
 			var actual []TestTables
 			attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-			require.Exactly(s.T(), expect, actual)
+			s.Require().Exactly(expect, actual)
 
 			lastInsertedID, err := result.LastInsertId()
-			require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
-			require.Equal(s.T(), int64(0), lastInsertedID)
+			s.Require().ErrorIs(err, pqxd.ErrNotSupported)
+			s.Require().Equal(int64(0), lastInsertedID)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 			rowAffected, err = result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(1), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(1), rowAffected)
 
 			expect = []TestTables{
 				{
@@ -2244,12 +2243,12 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_Exec() {
 			}
 
 			queryOutput, err = s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 1)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 1)
 
 			actual = make([]TestTables, 0)
 			attributevalue.UnmarshalListOfMaps(queryOutput.Items, &actual)
-			require.Exactly(s.T(), expect, actual)
+			s.Require().Exactly(expect, actual)
 		},
 	)
 
@@ -2266,14 +2265,14 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_Exec() {
 
 			db := GetDB(s.T())
 			tx, err := db.BeginTx(context.Background(), nil)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			result, err := tx.Exec(`DELETE FROM "test_tables" WHERE pk=? AND sk=?`, "ExecTransactionTestSuite", 1.0)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			rowAffected, err := result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(0), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(0), rowAffected)
 
 			queryInput := &dynamodb.QueryInput{
 				TableName:              aws.String("test_tables"),
@@ -2289,21 +2288,21 @@ func (s *ExecTransactionTestSuite) Test_BeginTx_Exec() {
 			}
 
 			queryOutput, err := s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 1)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 1)
 
 			lastInsertedID, err := result.LastInsertId()
-			require.ErrorIs(s.T(), err, pqxd.ErrNotSupported)
-			require.Equal(s.T(), int64(0), lastInsertedID)
+			s.Require().ErrorIs(err, pqxd.ErrNotSupported)
+			s.Require().Equal(int64(0), lastInsertedID)
 
-			require.NoError(s.T(), tx.Commit())
+			s.Require().NoError(tx.Commit())
 			rowAffected, err = result.RowsAffected()
-			require.NoError(s.T(), err)
-			require.Equal(s.T(), int64(1), rowAffected)
+			s.Require().NoError(err)
+			s.Require().Equal(int64(1), rowAffected)
 
 			queryOutput, err = s.client.Query(context.Background(), queryInput)
-			require.NoError(s.T(), err)
-			require.Len(s.T(), queryOutput.Items, 0)
+			s.Require().NoError(err)
+			s.Require().Len(queryOutput.Items, 0)
 		},
 	)
 }

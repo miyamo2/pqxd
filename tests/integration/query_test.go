@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/miyamo2/pqxd"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -38,7 +37,7 @@ func (s *QueryTestSuite) SetupSubTest() {
 		TransactItems: items,
 	}
 	_, err := s.client.TransactWriteItems(context.Background(), input)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 }
 
 func (s *QueryTestSuite) TearDownSubTest() {
@@ -52,7 +51,7 @@ func (s *QueryTestSuite) TearDownSubTest() {
 			TableName: aws.String("test_tables"),
 		}
 		_, err := s.client.DeleteItem(context.Background(), input)
-		require.NoError(s.T(), err)
+		s.Require().NoError(err)
 	}
 }
 
@@ -81,11 +80,11 @@ func (s *QueryTestSuite) Test_QueryRowContext() {
 				gsiSk string
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 		},
 	)
 	s.Run(
@@ -112,11 +111,11 @@ func (s *QueryTestSuite) Test_QueryRowContext() {
 				gsiSk string
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &sk, &gsiPk, &gsiSk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 		},
 	)
 	s.Run(
@@ -143,11 +142,11 @@ func (s *QueryTestSuite) Test_QueryRowContext() {
 				gsiSk string
 			)
 
-			require.NoError(s.T(), row.Scan(&gsiPk, &gsiSk, &pk, &sk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSIPK, gsiPk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&gsiPk, &gsiSk, &pk, &sk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 		},
 	)
 	s.Run(
@@ -175,10 +174,10 @@ func (s *QueryTestSuite) Test_QueryRowContext() {
 				sk    float64
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &gsiSk, &sk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &gsiSk, &sk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 		},
 	)
 	s.Run(
@@ -204,10 +203,10 @@ func (s *QueryTestSuite) Test_QueryRowContext() {
 				sk    float64
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &gsiSk, &sk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &gsiSk, &sk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 		},
 	)
 	s.Run(
@@ -259,63 +258,63 @@ func (s *QueryTestSuite) Test_QueryRowContext() {
 				&tableClassSummary,
 				&tableStatus,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
-			require.False(s.T(), archivalSummary.Valid)
+			s.Require().False(archivalSummary.Valid)
 
-			require.Len(s.T(), attributeDefinitions, 4)
+			s.Require().Len(attributeDefinitions, 4)
 
-			require.Equal(s.T(), aws.String("pk"), attributeDefinitions[0].AttributeName)
-			require.Equal(s.T(), types.ScalarAttributeTypeS, attributeDefinitions[0].AttributeType)
-			require.Equal(s.T(), aws.String("sk"), attributeDefinitions[1].AttributeName)
-			require.Equal(s.T(), types.ScalarAttributeTypeN, attributeDefinitions[1].AttributeType)
-			require.Equal(s.T(), aws.String("gsi_pk"), attributeDefinitions[2].AttributeName)
-			require.Equal(s.T(), types.ScalarAttributeTypeS, attributeDefinitions[2].AttributeType)
-			require.Equal(s.T(), aws.String("gsi_sk"), attributeDefinitions[3].AttributeName)
-			require.Equal(s.T(), types.ScalarAttributeTypeS, attributeDefinitions[3].AttributeType)
+			s.Require().Equal(aws.String("pk"), attributeDefinitions[0].AttributeName)
+			s.Require().Equal(types.ScalarAttributeTypeS, attributeDefinitions[0].AttributeType)
+			s.Require().Equal(aws.String("sk"), attributeDefinitions[1].AttributeName)
+			s.Require().Equal(types.ScalarAttributeTypeN, attributeDefinitions[1].AttributeType)
+			s.Require().Equal(aws.String("gsi_pk"), attributeDefinitions[2].AttributeName)
+			s.Require().Equal(types.ScalarAttributeTypeS, attributeDefinitions[2].AttributeType)
+			s.Require().Equal(aws.String("gsi_sk"), attributeDefinitions[3].AttributeName)
+			s.Require().Equal(types.ScalarAttributeTypeS, attributeDefinitions[3].AttributeType)
 
-			require.False(s.T(), billingModeSummary.Valid)
-			require.True(s.T(), creationDateTime.Valid)
+			s.Require().False(billingModeSummary.Valid)
+			s.Require().True(creationDateTime.Valid)
 
-			require.True(s.T(), deletionProtectionEnabled.Valid)
-			require.False(s.T(), deletionProtectionEnabled.Bool)
+			s.Require().True(deletionProtectionEnabled.Valid)
+			s.Require().False(deletionProtectionEnabled.Bool)
 
-			require.Len(s.T(), keySchema, 2)
-			require.Equal(s.T(), aws.String("pk"), keySchema[0].AttributeName)
-			require.Equal(s.T(), types.KeyTypeHash, keySchema[0].KeyType)
-			require.Equal(s.T(), aws.String("sk"), keySchema[1].AttributeName)
-			require.Equal(s.T(), types.KeyTypeRange, keySchema[1].KeyType)
+			s.Require().Len(keySchema, 2)
+			s.Require().Equal(aws.String("pk"), keySchema[0].AttributeName)
+			s.Require().Equal(types.KeyTypeHash, keySchema[0].KeyType)
+			s.Require().Equal(aws.String("sk"), keySchema[1].AttributeName)
+			s.Require().Equal(types.KeyTypeRange, keySchema[1].KeyType)
 
-			require.Len(s.T(), globalSecondaryIndexes, 1)
-			require.Equal(s.T(), aws.String("gsi_pk-gsi_sk-index"), globalSecondaryIndexes[0].IndexName)
-			require.Len(s.T(), globalSecondaryIndexes[0].KeySchema, 2)
-			require.Equal(s.T(), aws.String("gsi_pk"), globalSecondaryIndexes[0].KeySchema[0].AttributeName)
-			require.Equal(s.T(), types.KeyTypeHash, globalSecondaryIndexes[0].KeySchema[0].KeyType)
-			require.Equal(s.T(), aws.String("gsi_sk"), globalSecondaryIndexes[0].KeySchema[1].AttributeName)
-			require.Equal(s.T(), types.KeyTypeRange, globalSecondaryIndexes[0].KeySchema[1].KeyType)
-			require.Equal(s.T(), types.ProjectionTypeAll, globalSecondaryIndexes[0].Projection.ProjectionType)
-			require.Equal(s.T(), aws.Int64(1), globalSecondaryIndexes[0].ProvisionedThroughput.ReadCapacityUnits)
-			require.Equal(s.T(), aws.Int64(1), globalSecondaryIndexes[0].ProvisionedThroughput.WriteCapacityUnits)
-			require.Equal(s.T(), types.IndexStatusActive, globalSecondaryIndexes[0].IndexStatus)
+			s.Require().Len(globalSecondaryIndexes, 1)
+			s.Require().Equal(aws.String("gsi_pk-gsi_sk-index"), globalSecondaryIndexes[0].IndexName)
+			s.Require().Len(globalSecondaryIndexes[0].KeySchema, 2)
+			s.Require().Equal(aws.String("gsi_pk"), globalSecondaryIndexes[0].KeySchema[0].AttributeName)
+			s.Require().Equal(types.KeyTypeHash, globalSecondaryIndexes[0].KeySchema[0].KeyType)
+			s.Require().Equal(aws.String("gsi_sk"), globalSecondaryIndexes[0].KeySchema[1].AttributeName)
+			s.Require().Equal(types.KeyTypeRange, globalSecondaryIndexes[0].KeySchema[1].KeyType)
+			s.Require().Equal(types.ProjectionTypeAll, globalSecondaryIndexes[0].Projection.ProjectionType)
+			s.Require().Equal(aws.Int64(1), globalSecondaryIndexes[0].ProvisionedThroughput.ReadCapacityUnits)
+			s.Require().Equal(aws.Int64(1), globalSecondaryIndexes[0].ProvisionedThroughput.WriteCapacityUnits)
+			s.Require().Equal(types.IndexStatusActive, globalSecondaryIndexes[0].IndexStatus)
 
-			require.False(s.T(), globalTableVersion.Valid)
+			s.Require().False(globalTableVersion.Valid)
 
-			require.True(s.T(), itemCount.Valid)
-			require.Equal(s.T(), int64(5), itemCount.Int64)
+			s.Require().True(itemCount.Valid)
+			s.Require().Equal(int64(5), itemCount.Int64)
 
-			require.Len(s.T(), localSecondaryIndexes, 0)
-			require.False(s.T(), onDemandThroughput.Valid)
+			s.Require().Len(localSecondaryIndexes, 0)
+			s.Require().False(onDemandThroughput.Valid)
 
-			require.True(s.T(), provisionedThroughput.Valid)
-			require.Equal(s.T(), aws.Int64(1), provisionedThroughput.V.ReadCapacityUnits)
-			require.Equal(s.T(), aws.Int64(1), provisionedThroughput.V.WriteCapacityUnits)
+			s.Require().True(provisionedThroughput.Valid)
+			s.Require().Equal(aws.Int64(1), provisionedThroughput.V.ReadCapacityUnits)
+			s.Require().Equal(aws.Int64(1), provisionedThroughput.V.WriteCapacityUnits)
 
-			require.False(s.T(), replicas.Valid)
-			require.False(s.T(), restoreSummary.Valid)
-			require.False(s.T(), sseDescription.Valid)
-			require.False(s.T(), streamSpecification.Valid)
-			require.False(s.T(), tableClassSummary.Valid)
-			require.Equal(s.T(), "ACTIVE", tableStatus.String())
+			s.Require().False(replicas.Valid)
+			s.Require().False(restoreSummary.Valid)
+			s.Require().False(sseDescription.Valid)
+			s.Require().False(streamSpecification.Valid)
+			s.Require().False(tableClassSummary.Valid)
+			s.Require().Equal("ACTIVE", tableStatus.String())
 		},
 	)
 }
@@ -325,7 +324,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 		"full-scan", func() {
 			db := GetDB(s.T())
 			rows, err := db.QueryContext(context.Background(), `SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables"`)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -369,14 +368,15 @@ func (s *QueryTestSuite) Test_QueryContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
+			s.Require().Equal(5, i)
 		},
 	)
 	s.Run(
@@ -387,7 +387,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ?`,
 				"TestQueryTestSuite",
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 			expect := []TestTables{
 				{
 					PK:    "TestQueryTestSuite",
@@ -430,14 +430,15 @@ func (s *QueryTestSuite) Test_QueryContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
+			s.Require().Equal(5, i)
 		},
 	)
 	s.Run(
@@ -449,7 +450,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 				"TestQueryTestSuite",
 				3,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 			expect := []TestTables{
 				{
 					PK:    "TestQueryTestSuite",
@@ -468,14 +469,15 @@ func (s *QueryTestSuite) Test_QueryContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
+			s.Require().Equal(1, i)
 		},
 	)
 	s.Run(
@@ -486,7 +488,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE sk = ?`,
 				3,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 			expect := []TestTables{
 				{
 					PK:    "TestQueryTestSuite",
@@ -505,14 +507,15 @@ func (s *QueryTestSuite) Test_QueryContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
+			s.Require().Equal(1, i)
 		},
 	)
 	s.Run(
@@ -523,7 +526,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE gsi_pk = ?`,
 				"TestQueryTestSuite3",
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 			expect := []TestTables{
 				{
 					PK:    "TestQueryTestSuite",
@@ -542,14 +545,15 @@ func (s *QueryTestSuite) Test_QueryContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
+			s.Require().Equal(1, i)
 		},
 	)
 	s.Run(
@@ -561,7 +565,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 				"TestQueryTestSuite3",
 				"3",
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 			expect := []TestTables{
 				{
 					PK:    "TestQueryTestSuite",
@@ -580,14 +584,15 @@ func (s *QueryTestSuite) Test_QueryContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
+			s.Require().Equal(1, i)
 		},
 	)
 	s.Run(
@@ -598,7 +603,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE gsi_pk = ?`,
 				"TestQueryTestSuite3",
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 			expect := []TestTables{
 				{
 					PK:    "TestQueryTestSuite",
@@ -618,14 +623,15 @@ func (s *QueryTestSuite) Test_QueryContext() {
 						gsiSk tenTimes
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, string(gsiSk))
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, string(gsiSk))
 					i++
 				}
 			}
+			s.Require().Equal(1, i)
 		},
 	)
 	s.Run(
@@ -639,7 +645,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 				"TestQueryTestSuite",
 				3,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := TestTables{
 				PK:    "TestQueryTestSuite",
@@ -656,14 +662,14 @@ func (s *QueryTestSuite) Test_QueryContext() {
 						sk    float64
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &gsiSk, &sk))
-					require.Equal(s.T(), expect.PK, pk)
-					require.Equal(s.T(), expect.GSISK, gsiSk)
-					require.Equal(s.T(), expect.SK, sk)
+					s.Require().NoError(rows.Scan(&pk, &gsiSk, &sk))
+					s.Require().Equal(expect.PK, pk)
+					s.Require().Equal(expect.GSISK, gsiSk)
+					s.Require().Equal(expect.SK, sk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 		},
 	)
 	s.Run(
@@ -675,7 +681,7 @@ func (s *QueryTestSuite) Test_QueryContext() {
 				"TestQueryTestSuite",
 				3,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := TestTables{
 				PK:    "TestQueryTestSuite",
@@ -692,32 +698,32 @@ func (s *QueryTestSuite) Test_QueryContext() {
 						sk    float64
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &gsiSk, &sk))
-					require.Equal(s.T(), expect.PK, pk)
-					require.Equal(s.T(), expect.GSISK, gsiSk)
-					require.Equal(s.T(), expect.SK, sk)
+					s.Require().NoError(rows.Scan(&pk, &gsiSk, &sk))
+					s.Require().Equal(expect.PK, pk)
+					s.Require().Equal(expect.GSISK, gsiSk)
+					s.Require().Equal(expect.SK, sk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 		},
 	)
 	s.Run(
 		"list-table", func() {
 			db := GetDB(s.T())
 			rows, err := db.QueryContext(context.Background(), `SELECT * FROM "!pqxd_list_tables"`)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			var i int
 			for rows.NextResultSet() {
 				for rows.Next() {
 					var tableName string
-					require.NoError(s.T(), rows.Scan(&tableName))
-					require.Equal(s.T(), "test_tables", tableName)
+					s.Require().NoError(rows.Scan(&tableName))
+					s.Require().Equal("test_tables", tableName)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 		},
 	)
 }
@@ -727,7 +733,7 @@ func (s *QueryTestSuite) Test_Query() {
 		"full-scan", func() {
 			db := GetDB(s.T())
 			rows, err := db.Query(`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables"`)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -771,14 +777,15 @@ func (s *QueryTestSuite) Test_Query() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
+			s.Require().Equal(5, i)
 		},
 	)
 }
@@ -791,9 +798,9 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 				context.Background(),
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 			rows, err := query.Query("TestQueryTestSuite", 1.0)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -813,15 +820,15 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 		},
 	)
 	s.Run(
@@ -831,9 +838,9 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 				context.Background(),
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 			rows, err := query.Query("TestQueryTestSuite", 1.0)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -853,15 +860,15 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
-			require.Equal(s.T(), i, 1)
+			s.Require().Equal(i, 1)
 		},
 	)
 	s.Run(
@@ -871,7 +878,7 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 				context.Background(),
 				`UPDATE "test_tables" SET gsi_pk = ? SET gsi_sk = ? WHERE pk = ? AND sk = ? RETURNING ALL OLD pk, gsi_sk, sk`,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			row := query.QueryRowContext(context.Background(), "TestQueryTestSuite3", "3.5", "TestQueryTestSuite", 3)
 
@@ -888,10 +895,10 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 				sk    float64
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &gsiSk, &sk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &gsiSk, &sk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 		},
 	)
 	s.Run(
@@ -901,7 +908,7 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 				context.Background(),
 				`DELETE FROM "test_tables" WHERE pk = ? AND sk = ? RETURNING ALL OLD pk, gsi_sk, sk`,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			row := query.QueryRowContext(context.Background(), "TestQueryTestSuite", 3)
 
@@ -918,10 +925,10 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 				sk    float64
 			)
 
-			require.NoError(s.T(), row.Scan(&pk, &gsiSk, &sk))
-			require.Equal(s.T(), expect.PK, pk)
-			require.Equal(s.T(), expect.SK, sk)
-			require.Equal(s.T(), expect.GSISK, gsiSk)
+			s.Require().NoError(row.Scan(&pk, &gsiSk, &sk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSISK, gsiSk)
 		},
 	)
 	s.Run(
@@ -931,7 +938,7 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 				context.Background(),
 				`SELECT * FROM "!pqxd_describe_table" WHERE table_name = ?`,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 			row := stmt.QueryRowContext(context.Background(), "test_tables")
 
 			var (
@@ -974,84 +981,84 @@ func (s *QueryTestSuite) Test_PrepareContext() {
 				&tableClassSummary,
 				&tableStatus,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
-			require.False(s.T(), archivalSummary.Valid)
+			s.Require().False(archivalSummary.Valid)
 
-			require.Len(s.T(), attributeDefinitions, 4)
+			s.Require().Len(attributeDefinitions, 4)
 
-			require.Equal(s.T(), aws.String("pk"), attributeDefinitions[0].AttributeName)
-			require.Equal(s.T(), types.ScalarAttributeTypeS, attributeDefinitions[0].AttributeType)
-			require.Equal(s.T(), aws.String("sk"), attributeDefinitions[1].AttributeName)
-			require.Equal(s.T(), types.ScalarAttributeTypeN, attributeDefinitions[1].AttributeType)
-			require.Equal(s.T(), aws.String("gsi_pk"), attributeDefinitions[2].AttributeName)
-			require.Equal(s.T(), types.ScalarAttributeTypeS, attributeDefinitions[2].AttributeType)
-			require.Equal(s.T(), aws.String("gsi_sk"), attributeDefinitions[3].AttributeName)
-			require.Equal(s.T(), types.ScalarAttributeTypeS, attributeDefinitions[3].AttributeType)
+			s.Require().Equal(aws.String("pk"), attributeDefinitions[0].AttributeName)
+			s.Require().Equal(types.ScalarAttributeTypeS, attributeDefinitions[0].AttributeType)
+			s.Require().Equal(aws.String("sk"), attributeDefinitions[1].AttributeName)
+			s.Require().Equal(types.ScalarAttributeTypeN, attributeDefinitions[1].AttributeType)
+			s.Require().Equal(aws.String("gsi_pk"), attributeDefinitions[2].AttributeName)
+			s.Require().Equal(types.ScalarAttributeTypeS, attributeDefinitions[2].AttributeType)
+			s.Require().Equal(aws.String("gsi_sk"), attributeDefinitions[3].AttributeName)
+			s.Require().Equal(types.ScalarAttributeTypeS, attributeDefinitions[3].AttributeType)
 
-			require.False(s.T(), billingModeSummary.Valid)
-			require.True(s.T(), creationDateTime.Valid)
+			s.Require().False(billingModeSummary.Valid)
+			s.Require().True(creationDateTime.Valid)
 
-			require.True(s.T(), deletionProtectionEnabled.Valid)
-			require.False(s.T(), deletionProtectionEnabled.Bool)
+			s.Require().True(deletionProtectionEnabled.Valid)
+			s.Require().False(deletionProtectionEnabled.Bool)
 
-			require.Len(s.T(), keySchema, 2)
-			require.Equal(s.T(), aws.String("pk"), keySchema[0].AttributeName)
-			require.Equal(s.T(), types.KeyTypeHash, keySchema[0].KeyType)
-			require.Equal(s.T(), aws.String("sk"), keySchema[1].AttributeName)
-			require.Equal(s.T(), types.KeyTypeRange, keySchema[1].KeyType)
+			s.Require().Len(keySchema, 2)
+			s.Require().Equal(aws.String("pk"), keySchema[0].AttributeName)
+			s.Require().Equal(types.KeyTypeHash, keySchema[0].KeyType)
+			s.Require().Equal(aws.String("sk"), keySchema[1].AttributeName)
+			s.Require().Equal(types.KeyTypeRange, keySchema[1].KeyType)
 
-			require.Len(s.T(), globalSecondaryIndexes, 1)
-			require.Equal(s.T(), aws.String("gsi_pk-gsi_sk-index"), globalSecondaryIndexes[0].IndexName)
-			require.Len(s.T(), globalSecondaryIndexes[0].KeySchema, 2)
-			require.Equal(s.T(), aws.String("gsi_pk"), globalSecondaryIndexes[0].KeySchema[0].AttributeName)
-			require.Equal(s.T(), types.KeyTypeHash, globalSecondaryIndexes[0].KeySchema[0].KeyType)
-			require.Equal(s.T(), aws.String("gsi_sk"), globalSecondaryIndexes[0].KeySchema[1].AttributeName)
-			require.Equal(s.T(), types.KeyTypeRange, globalSecondaryIndexes[0].KeySchema[1].KeyType)
-			require.Equal(s.T(), types.ProjectionTypeAll, globalSecondaryIndexes[0].Projection.ProjectionType)
-			require.Equal(s.T(), aws.Int64(1), globalSecondaryIndexes[0].ProvisionedThroughput.ReadCapacityUnits)
-			require.Equal(s.T(), aws.Int64(1), globalSecondaryIndexes[0].ProvisionedThroughput.WriteCapacityUnits)
-			require.Equal(s.T(), types.IndexStatusActive, globalSecondaryIndexes[0].IndexStatus)
+			s.Require().Len(globalSecondaryIndexes, 1)
+			s.Require().Equal(aws.String("gsi_pk-gsi_sk-index"), globalSecondaryIndexes[0].IndexName)
+			s.Require().Len(globalSecondaryIndexes[0].KeySchema, 2)
+			s.Require().Equal(aws.String("gsi_pk"), globalSecondaryIndexes[0].KeySchema[0].AttributeName)
+			s.Require().Equal(types.KeyTypeHash, globalSecondaryIndexes[0].KeySchema[0].KeyType)
+			s.Require().Equal(aws.String("gsi_sk"), globalSecondaryIndexes[0].KeySchema[1].AttributeName)
+			s.Require().Equal(types.KeyTypeRange, globalSecondaryIndexes[0].KeySchema[1].KeyType)
+			s.Require().Equal(types.ProjectionTypeAll, globalSecondaryIndexes[0].Projection.ProjectionType)
+			s.Require().Equal(aws.Int64(1), globalSecondaryIndexes[0].ProvisionedThroughput.ReadCapacityUnits)
+			s.Require().Equal(aws.Int64(1), globalSecondaryIndexes[0].ProvisionedThroughput.WriteCapacityUnits)
+			s.Require().Equal(types.IndexStatusActive, globalSecondaryIndexes[0].IndexStatus)
 
-			require.False(s.T(), globalTableVersion.Valid)
+			s.Require().False(globalTableVersion.Valid)
 
-			require.True(s.T(), itemCount.Valid)
-			require.Equal(s.T(), int64(5), itemCount.Int64)
+			s.Require().True(itemCount.Valid)
+			s.Require().Equal(int64(5), itemCount.Int64)
 
-			require.Len(s.T(), localSecondaryIndexes, 0)
-			require.False(s.T(), onDemandThroughput.Valid)
+			s.Require().Len(localSecondaryIndexes, 0)
+			s.Require().False(onDemandThroughput.Valid)
 
-			require.True(s.T(), provisionedThroughput.Valid)
-			require.Equal(s.T(), aws.Int64(1), provisionedThroughput.V.ReadCapacityUnits)
-			require.Equal(s.T(), aws.Int64(1), provisionedThroughput.V.WriteCapacityUnits)
+			s.Require().True(provisionedThroughput.Valid)
+			s.Require().Equal(aws.Int64(1), provisionedThroughput.V.ReadCapacityUnits)
+			s.Require().Equal(aws.Int64(1), provisionedThroughput.V.WriteCapacityUnits)
 
-			require.False(s.T(), replicas.Valid)
-			require.False(s.T(), restoreSummary.Valid)
-			require.False(s.T(), sseDescription.Valid)
-			require.False(s.T(), streamSpecification.Valid)
-			require.False(s.T(), tableClassSummary.Valid)
-			require.Equal(s.T(), "ACTIVE", tableStatus.String())
+			s.Require().False(replicas.Valid)
+			s.Require().False(restoreSummary.Valid)
+			s.Require().False(sseDescription.Valid)
+			s.Require().False(streamSpecification.Valid)
+			s.Require().False(tableClassSummary.Valid)
+			s.Require().Equal("ACTIVE", tableStatus.String())
 		},
 	)
 	s.Run(
 		"list-tables", func() {
 			db := GetDB(s.T())
 			stmt, err := db.PrepareContext(context.Background(), `SELECT * FROM "!pqxd_list_tables"`)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 			rows, err := stmt.QueryContext(context.Background())
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			var i int
 			for rows.NextResultSet() {
 				for rows.Next() {
 					var tableName string
 					err = rows.Scan(&tableName)
-					require.NoError(s.T(), err)
-					require.Equal(s.T(), "test_tables", tableName)
+					s.Require().NoError(err)
+					s.Require().Equal("test_tables", tableName)
 					i++
 				}
 			}
-			require.Equal(s.T(), 1, i)
+			s.Require().Equal(1, i)
 		},
 	)
 }
@@ -1061,9 +1068,9 @@ func (s *QueryTestSuite) Test_Prepare() {
 		"Query", func() {
 			db := GetDB(s.T())
 			query, err := db.Prepare(`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ?`)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 			rows, err := query.Query("TestQueryTestSuite")
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -1107,14 +1114,15 @@ func (s *QueryTestSuite) Test_Prepare() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
+			s.Require().Equal(5, i)
 		},
 	)
 	s.Run(
@@ -1124,9 +1132,9 @@ func (s *QueryTestSuite) Test_Prepare() {
 				context.Background(),
 				`SELECT pk, sk, gsi_pk, gsi_sk FROM "test_tables" WHERE pk = ?`,
 			)
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 			rows, err := query.QueryContext(context.Background(), "TestQueryTestSuite")
-			require.NoError(s.T(), err)
+			s.Require().NoError(err)
 
 			expect := []TestTables{
 				{
@@ -1170,14 +1178,15 @@ func (s *QueryTestSuite) Test_Prepare() {
 						gsiSk string
 					)
 
-					require.NoError(s.T(), rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
-					require.Equal(s.T(), expect[i].PK, pk)
-					require.Equal(s.T(), expect[i].SK, sk)
-					require.Equal(s.T(), expect[i].GSIPK, gsiPk)
-					require.Equal(s.T(), expect[i].GSISK, gsiSk)
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
 					i++
 				}
 			}
+			s.Require().Equal(5, i)
 		},
 	)
 }
