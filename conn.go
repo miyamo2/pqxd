@@ -298,8 +298,12 @@ const (
 	// reStrWHERECondition is the regular expression for WHERE condition
 	reStrWHERECondition = `(?:WHERE\s+)(?P<` + namedCaptureKeyWHERECondition + `>(.+))`
 
+	// reStrColumnList is the common pattern for column lists supporting both quoted and unquoted column names
+	// Matches: *, id, "id", id,name, "id","name", "id",name, etc.
+	reStrColumnList = `\*|("[a-z0-9_\-\.]{1,255}"|[a-z0-9_\-\.]{1,255})(,\s*("[a-z0-9_\-\.]{1,255}"|[a-z0-9_\-\.]{1,255}))*`
+
 	// reStrSelectedList is the regular expression for selected list
-	reStrSelectedList = `(?P<` + namedCaptureKeySelectedList + `>(\*|[a-z0-9_\-\.]{1,255}(,\s*[a-z0-9_\-\.]{1,255})*))`
+	reStrSelectedList = `(?P<` + namedCaptureKeySelectedList + `>(` + reStrColumnList + `))`
 
 	// reStrSELECTTableName is the regular expression for table name
 	reStrSELECTTableName = `(?P<` + namedCaptureKeySELECTTableName + `>("[a-z0-9_\-\.]{3,255}"(\."[a-z0-9_\-\.]{3,255}")?))`
@@ -308,7 +312,7 @@ const (
 	reStrSELECTStatement = `(?i)^\s*(?:SELECT)\s+` + reStrSelectedList + `\s+(?:FROM)\s+` + reStrSELECTTableName + `(\s+` + reStrWHERECondition + `)?` + `\s*$`
 
 	// reStrRETURNINGClause is the regular expression for RETURNING clause
-	reStrRETURNINGClause = `(?i).*(?:RETURNING\s+(ALL OLD|MODIFIED OLD|ALL NEW|MODIFIED NEW)\s+)(?P<` + namedCaptureKeyRETURNINGSelectedList + `>(\*|[a-z0-9_\-\.]{1,255}(,\s*[a-z0-9_\-\.]{1,255})*))\s*$`
+	reStrRETURNINGClause = `(?i).*(?:RETURNING\s+(ALL OLD|MODIFIED OLD|ALL NEW|MODIFIED NEW)\s+)(?P<` + namedCaptureKeyRETURNINGSelectedList + `>(` + reStrColumnList + `))\s*$`
 
 	// reStrINSERTClause is the regular expression for INSERT clause
 	reStrINSERTClause = `(?P<` + namedCaptureKeyINSERTClause + `>INSERT)`
