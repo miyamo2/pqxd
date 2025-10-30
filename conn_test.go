@@ -256,6 +256,72 @@ func Test_pqxdRows_QueryContext(t *testing.T) {
 				err: driver.ErrBadConn,
 			},
 		},
+		"double-quoted-columns": {
+			ctx: context.Background(),
+			sut: func(client internal.DynamoDBClient) *connection {
+				return newConnection(client)
+			},
+			executeStatementResults: []ExecuteStatementResult{
+				{
+					out: &dynamodb.ExecuteStatementOutput{
+						Items: []map[string]types.AttributeValue{
+							{
+								"id":   &types.AttributeValueMemberS{Value: "1"},
+								"name": &types.AttributeValueMemberS{Value: "Alice"},
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				query: `SELECT "id", "name" FROM "users"`,
+				args:  []driver.NamedValue{},
+			},
+			want: want{
+				resultSets: [][]map[string]types.AttributeValue{
+					{
+						{
+							"id":   &types.AttributeValueMemberS{Value: "1"},
+							"name": &types.AttributeValueMemberS{Value: "Alice"},
+						},
+					},
+				},
+			},
+		},
+		"mixed-quoted-and-unquoted-columns": {
+			ctx: context.Background(),
+			sut: func(client internal.DynamoDBClient) *connection {
+				return newConnection(client)
+			},
+			executeStatementResults: []ExecuteStatementResult{
+				{
+					out: &dynamodb.ExecuteStatementOutput{
+						Items: []map[string]types.AttributeValue{
+							{
+								"id":   &types.AttributeValueMemberS{Value: "2"},
+								"name": &types.AttributeValueMemberS{Value: "Bob"},
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				query: `SELECT "id", name FROM "users" WHERE disabled = ?`,
+				args: []driver.NamedValue{
+					{Value: false},
+				},
+			},
+			want: want{
+				resultSets: [][]map[string]types.AttributeValue{
+					{
+						{
+							"id":   &types.AttributeValueMemberS{Value: "2"},
+							"name": &types.AttributeValueMemberS{Value: "Bob"},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for name, tt := range tests {
@@ -291,5 +357,127 @@ func Test_pqxdRows_QueryContext(t *testing.T) {
 				}
 			},
 		)
+	}
+}
+
+func Test_tokenize_with_double_quoted_columns(t *testing.T) {
+	type test struct {
+		query       string
+		wantColumns []string
+	}
+
+	tests := map[string]test{
+		"unquoted-columns": {
+			query:       `SELECT id, name FROM "users"`,
+			wantColumns: []string{"id", "name"},
+		},
+		"double-quoted-columns": {
+			query:       `SELECT "id", "name" FROM "users"`,
+			wantColumns: []string{"id", "name"},
+		},
+		"mixed-quoted-columns": {
+			query:       `SELECT "id", name FROM "users"`,
+			wantColumns: []string{"id", "name"},
+		},
+		"single-quoted-column": {
+			query:       `SELECT "id" FROM "users"`,
+			wantColumns: []string{"id"},
+		},
+		"with-where-clause": {
+			query:       `SELECT "id", "name" FROM "users" WHERE id = ?`,
+			wantColumns: []string{"id", "name"},
+		},
+		"asterisk": {
+			query:       `SELECT * FROM "users"`,
+			wantColumns: []string{"*"},
+		},
+		"returning-clause-unquoted": {
+			query:       `UPDATE "users" SET name = ? WHERE id = ? RETURNING ALL OLD id, name`,
+			wantColumns: []string{"id", "name"},
+		},
+		"returning-clause-quoted": {
+			query:       `UPDATE "users" SET name = ? WHERE id = ? RETURNING ALL OLD "id", "name"`,
+			wantColumns: []string{"id", "name"},
+		},
+		"returning-clause-mixed": {
+			query:       `UPDATE "users" SET name = ? WHERE id = ? RETURNING MODIFIED OLD "id", name`,
+			wantColumns: []string{"id", "name"},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			tq := tokenize(tt.query)
+
+			// Check if we got the expected number of columns
+			if len(tq.selectedList) != len(tt.wantColumns) {
+				t.Errorf("tokenize() got %d columns, want %d", len(tq.selectedList), len(tt.wantColumns))
+				return
+			}
+
+			// Check each column matches
+			for i, wantCol := range tt.wantColumns {
+				if tq.selectedList[i] != wantCol {
+					t.Errorf("tokenize() column[%d] = %q, want %q", i, tq.selectedList[i], wantCol)
+				}
+			}
+		})
+	}
+}
+
+func Test_Connection_PrepareContext_with_double_quoted_columns(t *testing.T) {
+	type test struct {
+		query     string
+		wantError error
+	}
+
+	tests := map[string]test{
+		"select-with-double-quoted-columns": {
+			query:     `SELECT "id", "name" FROM "users" WHERE id = ?`,
+			wantError: nil,
+		},
+		"select-with-mixed-quoted-columns": {
+			query:     `SELECT "id", name FROM "users"`,
+			wantError: nil,
+		},
+		"update-returning-double-quoted": {
+			query:     `UPDATE "users" SET name = ? WHERE id = ? RETURNING ALL OLD "id", "name"`,
+			wantError: nil,
+		},
+		"insert-statement": {
+			query:     `INSERT INTO "users" VALUE { 'id': ?, 'name': ? }`,
+			wantError: nil,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			client := internal.NewMockDynamoDBClient(ctrl)
+			conn := newConnection(client)
+
+			stmt, err := conn.PrepareContext(context.Background(), tt.query)
+			if tt.wantError != nil {
+				if !errors.Is(err, tt.wantError) {
+					t.Errorf("PrepareContext() error = %v, want %v", err, tt.wantError)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("PrepareContext() unexpected error = %v", err)
+				return
+			}
+
+			if stmt == nil {
+				t.Error("PrepareContext() returned nil statement")
+				return
+			}
+
+			// Clean up
+			stmt.Close()
+		})
 	}
 }
