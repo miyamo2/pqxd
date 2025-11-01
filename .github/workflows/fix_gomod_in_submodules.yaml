@@ -1,0 +1,59 @@
+name: fix go.mod in submodules
+
+on:
+  push:
+    branches:
+      - "renovate/*"
+    paths: ["go.mod", "go.sum"]
+
+jobs:
+  go-mod-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.goversion }}
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: extract go.mod files
+        id: extract_go_mods
+        run: |
+          touch output.txt
+          find . -type f -name "go.mod" -not -path "./go.mod" | while read -r file; do
+            dir=$(dirname "$file")
+            echo $dir >> output.txt
+          done
+          echo "::set-output name=TARGET_DIR::$(cat output.txt)"
+
+      - name: go mod tidy in submodules
+        if: steps.extract_go_mods.outputs.TARGET_DIR != ''
+        env:
+          TARGET_DIR: ${{ steps.extract_go_mods.outputs.TARGET_DIR }}
+        run: |
+          echo "$TARGET_DIR" | while read -r dir; do
+              echo "Running go mod tidy in $dir"
+              cd "$dir" || exit
+              go mod tidy
+              cd - || exit
+          done
+
+      - name: commit go.mod and go.sum fixes
+        if: steps.extract_go_mods.outputs.TARGET_DIR != ''
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "chore: fix go.mod and go.sum in submodules"
+            git push origin HEAD:${{ github.ref }}
+          else
+            echo "No changes to commit"
+          fi
