@@ -296,8 +296,8 @@ const (
 	reStrWHERECondition = `(?:WHERE\s+)(?P<` + namedCaptureKeyWHERECondition + `>(.+))`
 
 	// reStrColumnList is the common pattern for column lists supporting both quoted and unquoted column names
-	// Matches: *, id, "id", id,name, "id","name", "id",name, etc.
-	reStrColumnList = `\*|("[a-z0-9_\-\.]{1,255}"|[a-z0-9_\-\.]{1,255})(,\s*("[a-z0-9_\-\.]{1,255}"|[a-z0-9_\-\.]{1,255}))*`
+	// Matches: *, id, "id", id,name, "id","name", "id",name, id ,name, id , name, etc.
+	reStrColumnList = `\*|("[a-z0-9_\-\.]{1,255}"|[a-z0-9_\-\.]{1,255})(\s*,\s*("[a-z0-9_\-\.]{1,255}"|[a-z0-9_\-\.]{1,255}))*`
 
 	// reStrSelectedList is the regular expression for selected list
 	reStrSelectedList = `(?P<` + namedCaptureKeySelectedList + `>(` + reStrColumnList + `))`
