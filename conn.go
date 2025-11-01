@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/miyamo2/pqxd/internal"
 	"go.uber.org/atomic"
 )
 
@@ -27,7 +26,7 @@ var (
 // connection is an implementation of driver.Conn
 type connection struct {
 	// client DynamoDB Client
-	client internal.DynamoDBClient
+	client DynamoDBClient
 
 	// closed if true, the connection is closed
 	closed atomic.Bool
@@ -188,8 +187,6 @@ func (c *connection) BeginTx(ctx context.Context, _ driver.TxOptions) (driver.Tx
 		}()
 		for {
 			select {
-			default:
-				// do nothing
 			case inout := <-txStmtCh:
 				inouts = append(inouts, inout)
 			case <-commitCtx.Done():
@@ -485,7 +482,7 @@ func (c *connection) newCloseCheckClosure() func() error {
 }
 
 // newConnection returns a new connection
-func newConnection(client internal.DynamoDBClient) *connection {
+func newConnection(client DynamoDBClient) *connection {
 	return &connection{
 		client:    client,
 		closed:    *atomic.NewBool(false),

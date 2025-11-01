@@ -1,5 +1,5 @@
-//go:generate mockgen -source=dynamodb.go --package=internal -destination=dynamodb_mock.go
-package internal
+//go:generate mockgen -source=dynamodb.go --package=internal -destination=./internal/dynamodb_mock.go
+package pqxd
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 // compatibility check
 var _ DynamoDBClient = (*dynamodb.Client)(nil)
 
-// DynamoDBClient
+// DynamoDBClient provides access to DynamoDB API methods used by this driver.
 //
 // See: https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/dynamodb#Client
 type DynamoDBClient interface {

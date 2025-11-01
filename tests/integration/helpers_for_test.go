@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	"database/sql"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -18,21 +17,29 @@ import (
 )
 
 var (
-	client *dynamodb.Client
-	db     *sql.DB
-
-	mu sync.Mutex
+	client            *dynamodb.Client
+	db                *sql.DB
+	mu                sync.Mutex
+	region            string
+	accessKeyID       string
+	secretAccessKeyID string
+	endpoint          string
 )
 
+var dotEnv map[string]string
+
 func init() {
-	_ = godotenv.Load("./.env")
+	var err error
+	dotEnv, err = godotenv.Read("./.env")
+	if err != nil {
+		panic(err)
+	}
+	region = dotEnv["AWS_REGION"]
+	accessKeyID = dotEnv["AWS_ACCESS_KEY_ID"]
+	secretAccessKeyID = dotEnv["AWS_SECRET_ACCESS_KEY"]
+	endpoint = dotEnv["DYNAMODB_ENDPOINT"]
 
-	region := os.Getenv("AWS_REGION")
-	ak := os.Getenv("AWS_ACCESS_KEY_ID")
-	sk := os.Getenv("AWS_SECRET_ACCESS_KEY")
-	endpoint := os.Getenv("DYNAMODB_ENDPOINT")
-
-	credential := credentials.NewStaticCredentialsProvider(ak, sk, "")
+	credential := credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKeyID, "")
 
 	config := aws.Config{
 		Region:      region,
@@ -45,7 +52,7 @@ func init() {
 
 	db = sql.OpenDB(pqxd.NewConnector(config))
 
-	err := retry.Do(
+	err = retry.Do(
 		func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
