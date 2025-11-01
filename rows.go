@@ -94,9 +94,6 @@ func (r *pqxdRows) NextResultSet() error {
 	if err != nil {
 		return err
 	}
-	if len(next) == 0 && nt == nil {
-		return io.EOF
-	}
 	r.nextToken.Store(nt)
 	r.out.Store(&next)
 	r.outCursor.Store(0)

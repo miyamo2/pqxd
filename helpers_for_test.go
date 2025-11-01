@@ -8,8 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/miyamo2/pqxd/internal"
-	"go.uber.org/mock/gomock"
+	. "github.com/ovechkin-dm/mockio/v2/mock"
 )
 
 var CmpAttributeValuesOpt = []cmp.Option{
@@ -30,32 +29,29 @@ var CmpExecuteStatementInputOpt = append(
 		cmpopts.IgnoreFields(
 			dynamodb.ExecuteStatementInput{},
 			"noSmithyDocumentSerde",
+			"NextToken",
 		),
 	}, CmpAttributeValuesOpt...,
 )
 
-func CndExecuteStatementInput(t *testing.T, want *dynamodb.ExecuteStatementInput) func(x any) bool {
-	t.Helper()
-	return func(got any) bool {
-		if got == nil {
-			return want == nil
-		}
-		if want == nil {
-			return false
-		}
-		actual, ok := got.(*dynamodb.ExecuteStatementInput)
-		if !ok {
-			return false
-		}
-		if actual == nil {
-			return false
-		}
-		if diff := cmp.Diff(*actual, *want, CmpExecuteStatementInputOpt...); diff != "" {
-			t.Fatalf("unexpected difference: %v", diff)
-			return false
-		}
-		return true
-	}
+func ExecuteStatementInputEqual(
+	want *dynamodb.ExecuteStatementInput,
+) func() *dynamodb.ExecuteStatementInput {
+	return CreateMatcher[*dynamodb.ExecuteStatementInput](
+		"ExecuteStatementInput",
+		func(allArgs []any, actual *dynamodb.ExecuteStatementInput) bool {
+			if want == nil {
+				return false
+			}
+			if actual == nil {
+				return false
+			}
+			if diff := cmp.Diff(*actual, *want, CmpExecuteStatementInputOpt...); diff != "" {
+				return false
+			}
+			return true
+		},
+	)
 }
 
 func MustPartiQLParameters(t *testing.T, args []driver.NamedValue) []types.AttributeValue {
@@ -72,35 +68,17 @@ type ExecuteStatementResult struct {
 	err error
 }
 
-type MockDynamoDBClientOption func(*internal.MockDynamoDBClient)
-
-func MockDynamoDBClientWithExecuteStatement(
-	t *testing.T, input dynamodb.ExecuteStatementInput, executeStatementResults []ExecuteStatementResult,
-) func(client *internal.MockDynamoDBClient) {
-	return func(client *internal.MockDynamoDBClient) {
-		for _, esr := range executeStatementResults {
-			client.EXPECT().
-				ExecuteStatement(gomock.Any(), gomock.Cond(CndExecuteStatementInput(t, &input))).
-				Times(1).
-				Return(esr.out, esr.err)
-			input = dynamodb.ExecuteStatementInput{
-				Statement:  input.Statement,
-				Parameters: input.Parameters,
-				NextToken:  esr.out.NextToken,
-			}
-		}
-	}
-}
-
-func MockDynamoDBClient(
-	t *testing.T, ctrl *gomock.Controller, opts ...MockDynamoDBClientOption,
-) DynamoDBClient {
+func ExceptExecuteStatement(
+	t *testing.T,
+	client DynamoDBClient,
+	input dynamodb.ExecuteStatementInput,
+	executeStatementResults []ExecuteStatementResult,
+) {
 	t.Helper()
-	client := internal.NewMockDynamoDBClient(ctrl)
-	for _, opt := range opts {
-		opt(client)
+	returnDouble := WhenDouble(client.ExecuteStatement(AnyContext(), ExecuteStatementInputEqual(&input)()))
+	for _, esr := range executeStatementResults {
+		returnDouble = returnDouble.ThenReturn(esr.out, esr.err)
 	}
-	return client
 }
 
 func GetAllResultSet(t *testing.T, rows driver.Rows) ([][]map[string]types.AttributeValue, error) {

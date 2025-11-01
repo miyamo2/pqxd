@@ -3,6 +3,7 @@ package pqxd
 import (
 	"context"
 	"database/sql/driver"
+	"errors"
 	"regexp"
 	"strings"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"go.uber.org/atomic"
 )
+
+var ErrNilExecuteStatementOutput = errors.New("[pqxd] nil ExecuteStatementOutput received")
 
 // compatibility checks
 var (
@@ -461,10 +464,13 @@ func (c *connection) newFetchClosure(input dynamodb.ExecuteStatementInput) fetch
 		if c.closed.Load() {
 			return nil, driver.ErrBadConn
 		}
-
+		input.NextToken = nextToken
 		output, err := c.client.ExecuteStatement(ctx, &input)
 		if err != nil {
 			return nil, err
+		}
+		if output == nil {
+			return nil, ErrNilExecuteStatementOutput
 		}
 		*dest = output.Items
 		return output.NextToken, nil
