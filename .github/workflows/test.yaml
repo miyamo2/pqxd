@@ -43,12 +43,10 @@ jobs:
       matrix:
         goversion: ["1.23.0"]
     services:
-      localstack:
-        image: amazon/dynamodb-local:latest
-        env:
-          SERVICES: dynamodb
+      dynamodb-local:
+        image: "amazon/dynamodb-local:latest"
         ports:
-          - 8000:8000
+          - "8000:8000"
 
     steps:
       - uses: Kesin11/actions-timeline@v2
@@ -64,8 +62,13 @@ jobs:
 
       - name: Setup Table
         working-directory: tests/integration
+        env:
+          AWS_ACCESS_KEY_ID: ABC1234567890
+          AWS_SECRET_ACCESS_KEY: ABC1234567890
+          AWS_REGION: ap-northeast-1
+          DYNAMODB_ENDPOINT: http://127.0.0.1:8000
         run: |
-          aws dynamodb create-table --cli-input-json file://testdata/table-def.json --endpoint-url http://127.0.0.1:8000
+          aws dynamodb create-table --cli-input-json file://testdata/table-def.json --endpoint-url ${{ env.DYNAMODB_ENDPOINT }}
 
       - name: Integration Test
         working-directory: tests/integration
