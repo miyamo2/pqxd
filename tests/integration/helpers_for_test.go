@@ -29,8 +29,6 @@ var (
 var dotEnv map[string]string
 
 func init() {
-	_ = godotenv.Load("./.env")
-
 	var err error
 	dotEnv, err = godotenv.Read("./.env")
 	if err != nil {

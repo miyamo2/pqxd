@@ -49,11 +49,6 @@ jobs:
           SERVICES: dynamodb
         ports:
           - 8000:8000
-    env:
-      AWS_ACCESS_KEY_ID: ABC1234567890
-      AWS_SECRET_ACCESS_KEY: ABC1234567890
-      AWS_REGION: ap-northeast-1
-      DYNAMODB_ENDPOINT: http://127.0.0.1:8000
 
     steps:
       - uses: Kesin11/actions-timeline@v2
@@ -70,9 +65,14 @@ jobs:
       - name: Setup Table
         working-directory: tests/integration
         run: |
-          aws dynamodb create-table --cli-input-json file://testdata/table-def.json --endpoint-url ${{ env.DYNAMODB_ENDPOINT }}
+          aws dynamodb create-table --cli-input-json file://testdata/table-def.json --endpoint-url http://127.0.0.1:8000
 
       - name: Integration Test
         working-directory: tests/integration
         run: |
+          touch .env
+          echo "DYNAMODB_ENDPOINT=http://127.0.0.1:8000" >> .env
+          echo "AWS_REGION=ap-northeast-1" >> .env
+          echo "AWS_ACCESS_KEY_ID=ABC1234567890" >> .env
+          echo "AWS_SECRET_ACCESS_KEY=ABC1234567890" >> .env
           go test -v -coverpkg='github.com/miyamo2/pqxd' -coverprofile=coverage.out
