@@ -3,6 +3,7 @@ package pqxd
 import (
 	"context"
 	"database/sql/driver"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
@@ -30,7 +31,9 @@ var describeTableColumns = []string{
 
 // describeTable performs a DescribeTable API.
 // See: https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/dynamodb#Client.DeleteTable
-func (c *connection) describeTable(ctx context.Context, targetTable string, selectedList []string, args []driver.NamedValue) (driver.Rows, error) {
+func (c *connection) describeTable(
+	ctx context.Context, targetTable string, selectedList []string, args []driver.NamedValue,
+) (driver.Rows, error) {
 	if c.closed.Load() {
 		return nil, driver.ErrBadConn
 	}
@@ -42,9 +45,11 @@ func (c *connection) describeTable(ctx context.Context, targetTable string, sele
 			targetTable = args[0].Value.(string)
 		}
 	}
-	output, err := c.client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
-		TableName: &targetTable,
-	})
+	output, err := c.client.DescribeTable(
+		ctx, &dynamodb.DescribeTableInput{
+			TableName: &targetTable,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -86,8 +91,13 @@ func (c *connection) listTables(ctx context.Context) (driver.Rows, error) {
 
 // newListTablesFetchClosure returns a fetchClosure for ListTables API.
 func (c *connection) newListTablesFetchClosure() fetchClosure {
-	return func(ctx context.Context, lastEvaluatedTableName *string, dest *[]map[string]types.AttributeValue) (*string, error) {
-		output, err := c.client.ListTables(ctx, &dynamodb.ListTablesInput{ExclusiveStartTableName: lastEvaluatedTableName})
+	return func(ctx context.Context, lastEvaluatedTableName *string, dest *[]map[string]types.AttributeValue) (
+		*string, error,
+	) {
+		output, err := c.client.ListTables(
+			ctx,
+			&dynamodb.ListTablesInput{ExclusiveStartTableName: lastEvaluatedTableName},
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -100,9 +110,11 @@ func (c *connection) newListTablesFetchClosure() fetchClosure {
 func tablesNamesToExecuteStatementOutputItems(s []string) []map[string]types.AttributeValue {
 	var items []map[string]types.AttributeValue
 	for _, v := range s {
-		items = append(items, map[string]types.AttributeValue{
-			"TableName": &types.AttributeValueMemberS{Value: v},
-		})
+		items = append(
+			items, map[string]types.AttributeValue{
+				"TableName": &types.AttributeValueMemberS{Value: v},
+			},
+		)
 	}
 	return items
 }

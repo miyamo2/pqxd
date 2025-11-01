@@ -4,9 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
+
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/miyamo2/pqxd"
-	"os"
 )
 
 func MustDB() *sql.DB {
@@ -38,7 +39,10 @@ func Example_withOpen() {
 	ak := os.Getenv("AWS_ACCESS_KEY_ID")
 	sk := os.Getenv("AWS_SECRET_ACCESS_KEY")
 
-	db, err := sql.Open(pqxd.DriverName, fmt.Sprintf("AWS_REGION=%s;AWS_ACCESS_KEY_ID=%s;AWS_SECRET_ACCESS_KEY=%s", region, ak, sk))
+	db, err := sql.Open(
+		pqxd.DriverName,
+		fmt.Sprintf("AWS_REGION=%s;AWS_ACCESS_KEY_ID=%s;AWS_SECRET_ACCESS_KEY=%s", region, ak, sk),
+	)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -293,7 +297,13 @@ func ExampleNewConnector() {
 func Example_returning() {
 	db := MustDB()
 
-	row := db.QueryRowContext(context.Background(), `UPDATE "users" SET name = ? SET nickname = ? WHERE id = ? RETURNING MODIFIED OLD *`, "David", "Dave", "3")
+	row := db.QueryRowContext(
+		context.Background(),
+		`UPDATE "users" SET name = ? SET nickname = ? WHERE id = ? RETURNING MODIFIED OLD *`,
+		"David",
+		"Dave",
+		"3",
+	)
 
 	var name, nickname sql.NullString
 	if err := row.Scan(&name, &nickname); err != nil {
@@ -307,7 +317,12 @@ func Example_returning() {
 		fmt.Printf("nickname: %s\n", nickname.String)
 	}
 
-	row = db.QueryRowContext(context.Background(), `UPDATE "users" SET name = ? SET nickname = ? WHERE id = ? RETURNING ALL OLD id`, "Bob", "2")
+	row = db.QueryRowContext(
+		context.Background(),
+		`UPDATE "users" SET name = ? SET nickname = ? WHERE id = ? RETURNING ALL OLD id`,
+		"Bob",
+		"2",
+	)
 	var id string
 	if err := row.Scan(&id); err != nil {
 		fmt.Println(err.Error())
@@ -319,7 +334,11 @@ func Example_returning() {
 func Example_describeTable() {
 	db := MustDB()
 
-	row := db.QueryRowContext(context.Background(), `SELECT * FROM "!pqxd_describe_table" WHERE table_name = ?`, "test_tables")
+	row := db.QueryRowContext(
+		context.Background(),
+		`SELECT * FROM "!pqxd_describe_table" WHERE table_name = ?`,
+		"test_tables",
+	)
 	var (
 		archivalSummary           pqxd.ArchivalSummary
 		attributeDefinitions      pqxd.AttributeDefinitions
@@ -340,7 +359,8 @@ func Example_describeTable() {
 		tableClassSummary         pqxd.TableClassSummary
 		tableStatus               pqxd.TableStatus
 	)
-	err := row.Scan(&archivalSummary,
+	err := row.Scan(
+		&archivalSummary,
 		&attributeDefinitions,
 		&billingModeSummary,
 		&creationDateTime,
@@ -369,7 +389,11 @@ func Example_describeTable() {
 func Example_describeTableWithSpecifyColumn() {
 	db := MustDB()
 
-	row := db.QueryRowContext(context.Background(), `SELECT TableStatus FROM "!pqxd_describe_table" WHERE table_name = ?`, "test_tables")
+	row := db.QueryRowContext(
+		context.Background(),
+		`SELECT TableStatus FROM "!pqxd_describe_table" WHERE table_name = ?`,
+		"test_tables",
+	)
 
 	var tableStatus pqxd.TableStatus
 	if err := row.Scan(&tableStatus); err != nil {

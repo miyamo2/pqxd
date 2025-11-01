@@ -10,15 +10,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/go-cmp/cmp"
-	"github.com/miyamo2/pqxd/internal"
 	"go.uber.org/atomic"
 	"go.uber.org/mock/gomock"
+
+	. "github.com/ovechkin-dm/mockio/v2/mock"
 )
 
 func Test_Connection_Ping(t *testing.T) {
 	type test struct {
 		ctx            context.Context
-		dynamoDBClient func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient
+		dynamoDBClient func(ctx context.Context) DynamoDBClient
 		sut            func(client DynamoDBClient) *connection
 		want           error
 	}
@@ -30,9 +31,12 @@ func Test_Connection_Ping(t *testing.T) {
 			sut: func(client DynamoDBClient) *connection {
 				return newConnection(client)
 			},
-			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient {
-				client := internal.NewMockDynamoDBClient(ctrl)
-				client.EXPECT().ListTables(ctx, nil).Times(1).Return(nil, nil)
+			dynamoDBClient: func(ctx context.Context) DynamoDBClient {
+				ctrl := NewMockController(t)
+				client := Mock[DynamoDBClient](ctrl)
+				WhenDouble(client.ListTables(ctx, nil)).
+					ThenReturn(nil, nil).
+					Verify(Times(1))
 				return client
 			},
 		},
@@ -41,9 +45,12 @@ func Test_Connection_Ping(t *testing.T) {
 			sut: func(client DynamoDBClient) *connection {
 				return newConnection(client)
 			},
-			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient {
-				client := internal.NewMockDynamoDBClient(ctrl)
-				client.EXPECT().ListTables(ctx, nil).Times(1).Return(nil, someErr)
+			dynamoDBClient: func(ctx context.Context) DynamoDBClient {
+				ctrl := NewMockController(t)
+				client := Mock[DynamoDBClient](ctrl)
+				WhenDouble(client.ListTables(ctx, nil)).
+					ThenReturn(nil, someErr).
+					Verify(Times(1))
 				return client
 			},
 			want: someErr,
@@ -56,9 +63,10 @@ func Test_Connection_Ping(t *testing.T) {
 					closed: *atomic.NewBool(true),
 				}
 			},
-			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient {
-				client := internal.NewMockDynamoDBClient(ctrl)
-				client.EXPECT().ListTables(gomock.Any(), gomock.Any()).Times(0)
+			dynamoDBClient: func(ctx context.Context) DynamoDBClient {
+				ctrl := NewMockController(t)
+				client := Mock[DynamoDBClient](ctrl)
+				WhenDouble(client.ListTables(AnyContext(), Any[*dynamodb.ListTablesInput]())).Verify(Never())
 				return client
 			},
 			want: driver.ErrBadConn,
@@ -71,7 +79,7 @@ func Test_Connection_Ping(t *testing.T) {
 				ctrl := gomock.NewController(t)
 				defer ctrl.Finish()
 
-				client := tt.dynamoDBClient(tt.ctx, ctrl)
+				client := tt.dynamoDBClient(tt.ctx)
 				sut := tt.sut(client)
 				got := sut.Ping(tt.ctx)
 				if !errors.Is(tt.want, got) {
@@ -85,7 +93,7 @@ func Test_Connection_Ping(t *testing.T) {
 func Test_Connection_Close(t *testing.T) {
 	type test struct {
 		ctx            context.Context
-		dynamoDBClient func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient
+		dynamoDBClient func(ctx context.Context) DynamoDBClient
 		sut            func(client DynamoDBClient) *connection
 		want           error
 	}
@@ -96,8 +104,9 @@ func Test_Connection_Close(t *testing.T) {
 			sut: func(client DynamoDBClient) *connection {
 				return newConnection(client)
 			},
-			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient {
-				client := internal.NewMockDynamoDBClient(ctrl)
+			dynamoDBClient: func(ctx context.Context) DynamoDBClient {
+				ctrl := NewMockController(t)
+				client := Mock[DynamoDBClient](ctrl)
 				return client
 			},
 		},
@@ -106,8 +115,9 @@ func Test_Connection_Close(t *testing.T) {
 			sut: func(client DynamoDBClient) *connection {
 				return newConnection(client)
 			},
-			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient {
-				client := internal.NewMockDynamoDBClient(ctrl)
+			dynamoDBClient: func(ctx context.Context) DynamoDBClient {
+				ctrl := NewMockController(t)
+				client := Mock[DynamoDBClient](ctrl)
 				return client
 			},
 		},
@@ -116,8 +126,9 @@ func Test_Connection_Close(t *testing.T) {
 			sut: func(client DynamoDBClient) *connection {
 				return newConnection(client)
 			},
-			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient {
-				client := internal.NewMockDynamoDBClient(ctrl)
+			dynamoDBClient: func(ctx context.Context) DynamoDBClient {
+				ctrl := NewMockController(t)
+				client := Mock[DynamoDBClient](ctrl)
 				return client
 			},
 		},
@@ -129,8 +140,9 @@ func Test_Connection_Close(t *testing.T) {
 					closed: *atomic.NewBool(true),
 				}
 			},
-			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient {
-				client := internal.NewMockDynamoDBClient(ctrl)
+			dynamoDBClient: func(ctx context.Context) DynamoDBClient {
+				ctrl := NewMockController(t)
+				client := Mock[DynamoDBClient](ctrl)
 				return client
 			},
 		},
@@ -142,7 +154,7 @@ func Test_Connection_Close(t *testing.T) {
 				ctrl := gomock.NewController(t)
 				defer ctrl.Finish()
 
-				client := tt.dynamoDBClient(tt.ctx, ctrl)
+				client := tt.dynamoDBClient(tt.ctx)
 				sut := tt.sut(client)
 				got := sut.Close()
 				if !errors.Is(tt.want, got) {
@@ -327,20 +339,15 @@ func Test_pqxdRows_QueryContext(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(
 			name, func(t *testing.T) {
-				ctrl := gomock.NewController(t)
-				defer ctrl.Finish()
-
 				qArgs := tt.args
 				input := dynamodb.ExecuteStatementInput{
 					Statement:  &qArgs.query,
 					Parameters: MustPartiQLParameters(t, qArgs.args),
 				}
 
-				client := MockDynamoDBClient(
-					t,
-					ctrl,
-					MockDynamoDBClientWithExecuteStatement(t, input, tt.executeStatementResults),
-				)
+				ctrl := NewMockController(t)
+				client := Mock[DynamoDBClient](ctrl)
+				ExceptExecuteStatement(t, client, input, tt.executeStatementResults)
 				sut := tt.sut(client)
 
 				got, err := sut.QueryContext(tt.ctx, qArgs.query, qArgs.args)
@@ -455,10 +462,8 @@ func Test_Connection_PrepareContext_with_double_quoted_columns(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(
 			name, func(t *testing.T) {
-				ctrl := gomock.NewController(t)
-				defer ctrl.Finish()
-
-				client := internal.NewMockDynamoDBClient(ctrl)
+				ctrl := NewMockController(t)
+				client := Mock[DynamoDBClient](ctrl)
 				conn := newConnection(client)
 
 				stmt, err := conn.PrepareContext(context.Background(), tt.query)
