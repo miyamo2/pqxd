@@ -187,8 +187,6 @@ func (c *connection) BeginTx(ctx context.Context, _ driver.TxOptions) (driver.Tx
 		}()
 		for {
 			select {
-			default:
-				// do nothing
 			case inout := <-txStmtCh:
 				inouts = append(inouts, inout)
 			case <-commitCtx.Done():
