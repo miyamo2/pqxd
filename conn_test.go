@@ -410,6 +410,26 @@ func Test_tokenize_with_double_quoted_columns(t *testing.T) {
 			query:       `UPDATE "users" SET name = ? WHERE id = ? RETURNING MODIFIED OLD "id", name`,
 			wantColumns: []string{"id", "name"},
 		},
+		"space-before-comma": {
+			query:       `SELECT id ,name FROM "users"`,
+			wantColumns: []string{"id", "name"},
+		},
+		"space-before-and-after-comma": {
+			query:       `SELECT id , name FROM "users"`,
+			wantColumns: []string{"id", "name"},
+		},
+		"no-space-around-comma": {
+			query:       `SELECT id,name FROM "users"`,
+			wantColumns: []string{"id", "name"},
+		},
+		"quoted-columns-space-before-comma": {
+			query:       `SELECT "id" ,"name" FROM "users"`,
+			wantColumns: []string{"id", "name"},
+		},
+		"multiple-columns-various-spacing": {
+			query:       `SELECT id ,name, email ,"created_at" FROM "users"`,
+			wantColumns: []string{"id", "name", "email", "created_at"},
+		},
 	}
 
 	for name, tt := range tests {

@@ -303,6 +303,161 @@ func (s *QueryTestSuite) Test_QueryRowContext() {
 		},
 	)
 	s.Run(
+		"space-before-comma", func() {
+			db := GetDB(s.T())
+			row := db.QueryRowContext(
+				context.Background(),
+				`SELECT pk ,sk ,gsi_pk ,gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
+				"TestQueryTestSuite",
+				1.0,
+			)
+
+			expect := TestTables{
+				PK:    "TestQueryTestSuite",
+				SK:    1.0,
+				GSIPK: "TestQueryTestSuite1",
+				GSISK: "1",
+			}
+
+			var (
+				pk    string
+				sk    float64
+				gsiPk string
+				gsiSk string
+			)
+
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
+		},
+	)
+	s.Run(
+		"space-before-and-after-comma", func() {
+			db := GetDB(s.T())
+			row := db.QueryRowContext(
+				context.Background(),
+				`SELECT pk , sk , gsi_pk , gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
+				"TestQueryTestSuite",
+				2.0,
+			)
+
+			expect := TestTables{
+				PK:    "TestQueryTestSuite",
+				SK:    2.0,
+				GSIPK: "TestQueryTestSuite2",
+				GSISK: "2",
+			}
+
+			var (
+				pk    string
+				sk    float64
+				gsiPk string
+				gsiSk string
+			)
+
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
+		},
+	)
+	s.Run(
+		"no-space-around-comma", func() {
+			db := GetDB(s.T())
+			row := db.QueryRowContext(
+				context.Background(),
+				`SELECT pk,sk,gsi_pk,gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
+				"TestQueryTestSuite",
+				3.0,
+			)
+
+			expect := TestTables{
+				PK:    "TestQueryTestSuite",
+				SK:    3.0,
+				GSIPK: "TestQueryTestSuite3",
+				GSISK: "3",
+			}
+
+			var (
+				pk    string
+				sk    float64
+				gsiPk string
+				gsiSk string
+			)
+
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
+		},
+	)
+	s.Run(
+		"mixed-spacing-with-quoted-columns", func() {
+			db := GetDB(s.T())
+			row := db.QueryRowContext(
+				context.Background(),
+				`SELECT "pk" ,sk, "gsi_pk" , gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
+				"TestQueryTestSuite",
+				4.0,
+			)
+
+			expect := TestTables{
+				PK:    "TestQueryTestSuite",
+				SK:    4.0,
+				GSIPK: "TestQueryTestSuite4",
+				GSISK: "4",
+			}
+
+			var (
+				pk    string
+				sk    float64
+				gsiPk string
+				gsiSk string
+			)
+
+			s.Require().NoError(row.Scan(&pk, &sk, &gsiPk, &gsiSk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSIPK, gsiPk)
+			s.Require().Equal(expect.GSISK, gsiSk)
+		},
+	)
+	s.Run(
+		"returning-clause-space-before-comma", func() {
+			db := GetDB(s.T())
+			row := db.QueryRowContext(
+				context.Background(),
+				`UPDATE "test_tables" SET gsi_pk = ? SET gsi_sk = ? WHERE pk = ? AND sk = ? RETURNING ALL OLD pk ,gsi_sk ,sk`,
+				"TestQueryTestSuite5",
+				"5.5",
+				"TestQueryTestSuite",
+				5,
+			)
+
+			expect := TestTables{
+				PK:    "TestQueryTestSuite",
+				SK:    5,
+				GSIPK: "TestQueryTestSuite5",
+				GSISK: "5",
+			}
+
+			var (
+				pk    string
+				gsiSk string
+				sk    float64
+			)
+
+			s.Require().NoError(row.Scan(&pk, &gsiSk, &sk))
+			s.Require().Equal(expect.PK, pk)
+			s.Require().Equal(expect.SK, sk)
+			s.Require().Equal(expect.GSISK, gsiSk)
+		},
+	)
+	s.Run(
 		"describe-table", func() {
 			db := GetDB(s.T())
 			row := db.QueryRowContext(
@@ -897,6 +1052,166 @@ func (s *QueryTestSuite) Test_QueryContext() {
 					SK:    1.0,
 					GSIPK: "TestQueryTestSuite1",
 					GSISK: "1",
+				},
+			}
+			i := 0
+			for rows.NextResultSet() {
+				for rows.Next() {
+					var (
+						pk    string
+						sk    float64
+						gsiPk string
+						gsiSk string
+					)
+
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
+					i++
+				}
+			}
+			s.Require().Equal(1, i)
+		},
+	)
+	s.Run(
+		"space-before-comma-full-scan", func() {
+			db := GetDB(s.T())
+			rows, err := db.QueryContext(context.Background(), `SELECT pk ,sk ,gsi_pk ,gsi_sk FROM "test_tables"`)
+			s.Require().NoError(err)
+
+			expect := []TestTables{
+				{
+					PK:    "TestQueryTestSuite",
+					SK:    1.0,
+					GSIPK: "TestQueryTestSuite1",
+					GSISK: "1",
+				},
+				{
+					PK:    "TestQueryTestSuite",
+					SK:    2.0,
+					GSIPK: "TestQueryTestSuite2",
+					GSISK: "2",
+				},
+				{
+					PK:    "TestQueryTestSuite",
+					SK:    3,
+					GSIPK: "TestQueryTestSuite3",
+					GSISK: "3",
+				},
+				{
+					PK:    "TestQueryTestSuite",
+					SK:    4,
+					GSIPK: "TestQueryTestSuite4",
+					GSISK: "4",
+				},
+				{
+					PK:    "TestQueryTestSuite",
+					SK:    5,
+					GSIPK: "TestQueryTestSuite5",
+					GSISK: "5",
+				},
+			}
+			i := 0
+			for rows.NextResultSet() {
+				for rows.Next() {
+					var (
+						pk    string
+						sk    float64
+						gsiPk string
+						gsiSk string
+					)
+
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
+					i++
+				}
+			}
+			s.Require().Equal(5, i)
+		},
+	)
+	s.Run(
+		"space-before-and-after-comma", func() {
+			db := GetDB(s.T())
+			rows, err := db.QueryContext(
+				context.Background(),
+				`SELECT pk , sk , gsi_pk , gsi_sk FROM "test_tables" WHERE pk = ?`,
+				"TestQueryTestSuite",
+			)
+			s.Require().NoError(err)
+			expect := []TestTables{
+				{
+					PK:    "TestQueryTestSuite",
+					SK:    1.0,
+					GSIPK: "TestQueryTestSuite1",
+					GSISK: "1",
+				},
+				{
+					PK:    "TestQueryTestSuite",
+					SK:    2.0,
+					GSIPK: "TestQueryTestSuite2",
+					GSISK: "2",
+				},
+				{
+					PK:    "TestQueryTestSuite",
+					SK:    3,
+					GSIPK: "TestQueryTestSuite3",
+					GSISK: "3",
+				},
+				{
+					PK:    "TestQueryTestSuite",
+					SK:    4,
+					GSIPK: "TestQueryTestSuite4",
+					GSISK: "4",
+				},
+				{
+					PK:    "TestQueryTestSuite",
+					SK:    5,
+					GSIPK: "TestQueryTestSuite5",
+					GSISK: "5",
+				},
+			}
+			i := 0
+			for rows.NextResultSet() {
+				for rows.Next() {
+					var (
+						pk    string
+						sk    float64
+						gsiPk string
+						gsiSk string
+					)
+
+					s.Require().NoError(rows.Scan(&pk, &sk, &gsiPk, &gsiSk))
+					s.Require().Equal(expect[i].PK, pk)
+					s.Require().Equal(expect[i].SK, sk)
+					s.Require().Equal(expect[i].GSIPK, gsiPk)
+					s.Require().Equal(expect[i].GSISK, gsiSk)
+					i++
+				}
+			}
+			s.Require().Equal(5, i)
+		},
+	)
+	s.Run(
+		"no-space-around-comma", func() {
+			db := GetDB(s.T())
+			rows, err := db.QueryContext(
+				context.Background(),
+				`SELECT pk,sk,gsi_pk,gsi_sk FROM "test_tables" WHERE pk = ? AND sk = ?`,
+				"TestQueryTestSuite",
+				2.0,
+			)
+			s.Require().NoError(err)
+			expect := []TestTables{
+				{
+					PK:    "TestQueryTestSuite",
+					SK:    2.0,
+					GSIPK: "TestQueryTestSuite2",
+					GSISK: "2",
 				},
 			}
 			i := 0
