@@ -18,8 +18,8 @@ import (
 func Test_Connection_Ping(t *testing.T) {
 	type test struct {
 		ctx            context.Context
-		dynamoDBClient func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient
-		sut            func(client internal.DynamoDBClient) *connection
+		dynamoDBClient func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient
+		sut            func(client DynamoDBClient) *connection
 		want           error
 	}
 
@@ -27,10 +27,10 @@ func Test_Connection_Ping(t *testing.T) {
 	tests := map[string]test{
 		"common": {
 			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient) *connection {
+			sut: func(client DynamoDBClient) *connection {
 				return newConnection(client)
 			},
-			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient {
+			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient {
 				client := internal.NewMockDynamoDBClient(ctrl)
 				client.EXPECT().ListTables(ctx, nil).Times(1).Return(nil, nil)
 				return client
@@ -38,10 +38,10 @@ func Test_Connection_Ping(t *testing.T) {
 		},
 		"client-returns-error": {
 			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient) *connection {
+			sut: func(client DynamoDBClient) *connection {
 				return newConnection(client)
 			},
-			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient {
+			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient {
 				client := internal.NewMockDynamoDBClient(ctrl)
 				client.EXPECT().ListTables(ctx, nil).Times(1).Return(nil, someErr)
 				return client
@@ -50,13 +50,13 @@ func Test_Connection_Ping(t *testing.T) {
 		},
 		"closed-connection": {
 			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient) *connection {
+			sut: func(client DynamoDBClient) *connection {
 				return &connection{
 					client: client,
 					closed: *atomic.NewBool(true),
 				}
 			},
-			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient {
+			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient {
 				client := internal.NewMockDynamoDBClient(ctrl)
 				client.EXPECT().ListTables(gomock.Any(), gomock.Any()).Times(0)
 				return client
@@ -85,51 +85,51 @@ func Test_Connection_Ping(t *testing.T) {
 func Test_Connection_Close(t *testing.T) {
 	type test struct {
 		ctx            context.Context
-		dynamoDBClient func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient
-		sut            func(client internal.DynamoDBClient) *connection
+		dynamoDBClient func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient
+		sut            func(client DynamoDBClient) *connection
 		want           error
 	}
 
 	tests := map[string]test{
 		"common": {
 			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient) *connection {
+			sut: func(client DynamoDBClient) *connection {
 				return newConnection(client)
 			},
-			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient {
+			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient {
 				client := internal.NewMockDynamoDBClient(ctrl)
 				return client
 			},
 		},
 		"ongoing-query-tx": {
 			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient) *connection {
+			sut: func(client DynamoDBClient) *connection {
 				return newConnection(client)
 			},
-			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient {
+			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient {
 				client := internal.NewMockDynamoDBClient(ctrl)
 				return client
 			},
 		},
 		"ongoing-exec-tx": {
 			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient) *connection {
+			sut: func(client DynamoDBClient) *connection {
 				return newConnection(client)
 			},
-			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient {
+			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient {
 				client := internal.NewMockDynamoDBClient(ctrl)
 				return client
 			},
 		},
 		"closed-connection": {
 			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient) *connection {
+			sut: func(client DynamoDBClient) *connection {
 				return &connection{
 					client: client,
 					closed: *atomic.NewBool(true),
 				}
 			},
-			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) internal.DynamoDBClient {
+			dynamoDBClient: func(ctx context.Context, ctrl *gomock.Controller) DynamoDBClient {
 				client := internal.NewMockDynamoDBClient(ctrl)
 				return client
 			},
@@ -164,7 +164,7 @@ func Test_pqxdRows_QueryContext(t *testing.T) {
 	}
 	type test struct {
 		ctx                     context.Context
-		sut                     func(client internal.DynamoDBClient) *connection
+		sut                     func(client DynamoDBClient) *connection
 		executeStatementResults []ExecuteStatementResult
 		args                    args
 		want                    want
@@ -173,7 +173,7 @@ func Test_pqxdRows_QueryContext(t *testing.T) {
 	tests := map[string]test{
 		"common": {
 			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient) *connection {
+			sut: func(client DynamoDBClient) *connection {
 				return newConnection(client)
 			},
 			executeStatementResults: []ExecuteStatementResult{
@@ -240,7 +240,7 @@ func Test_pqxdRows_QueryContext(t *testing.T) {
 		},
 		"closed-connection": {
 			ctx: context.Background(),
-			sut: func(client internal.DynamoDBClient) *connection {
+			sut: func(client DynamoDBClient) *connection {
 				return &connection{
 					client: client,
 					closed: *atomic.NewBool(true),

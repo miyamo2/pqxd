@@ -2,13 +2,14 @@ package pqxd
 
 import (
 	"database/sql/driver"
+	"testing"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/miyamo2/pqxd/internal"
 	"go.uber.org/mock/gomock"
-	"testing"
 )
 
 var CmpAttributeValuesOpt = []cmp.Option{
@@ -24,12 +25,14 @@ var CmpAttributeValuesOpt = []cmp.Option{
 	cmp.AllowUnexported(types.AttributeValueMemberSS{}),
 }
 
-var CmpExecuteStatementInputOpt = append([]cmp.Option{
-	cmpopts.IgnoreFields(
-		dynamodb.ExecuteStatementInput{},
-		"noSmithyDocumentSerde",
-	),
-}, CmpAttributeValuesOpt...)
+var CmpExecuteStatementInputOpt = append(
+	[]cmp.Option{
+		cmpopts.IgnoreFields(
+			dynamodb.ExecuteStatementInput{},
+			"noSmithyDocumentSerde",
+		),
+	}, CmpAttributeValuesOpt...,
+)
 
 func CndExecuteStatementInput(t *testing.T, want *dynamodb.ExecuteStatementInput) func(x any) bool {
 	t.Helper()
@@ -71,7 +74,9 @@ type ExecuteStatementResult struct {
 
 type MockDynamoDBClientOption func(*internal.MockDynamoDBClient)
 
-func MockDynamoDBClientWithExecuteStatement(t *testing.T, input dynamodb.ExecuteStatementInput, executeStatementResults []ExecuteStatementResult) func(client *internal.MockDynamoDBClient) {
+func MockDynamoDBClientWithExecuteStatement(
+	t *testing.T, input dynamodb.ExecuteStatementInput, executeStatementResults []ExecuteStatementResult,
+) func(client *internal.MockDynamoDBClient) {
 	return func(client *internal.MockDynamoDBClient) {
 		for _, esr := range executeStatementResults {
 			client.EXPECT().
@@ -87,7 +92,9 @@ func MockDynamoDBClientWithExecuteStatement(t *testing.T, input dynamodb.Execute
 	}
 }
 
-func MockDynamoDBClient(t *testing.T, ctrl *gomock.Controller, opts ...MockDynamoDBClientOption) internal.DynamoDBClient {
+func MockDynamoDBClient(
+	t *testing.T, ctrl *gomock.Controller, opts ...MockDynamoDBClientOption,
+) DynamoDBClient {
 	t.Helper()
 	client := internal.NewMockDynamoDBClient(ctrl)
 	for _, opt := range opts {
