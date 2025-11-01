@@ -10,8 +10,8 @@
 ### ⚠️ Deprecations
 
 - `pqxdDriver.Open` has been deprecated and is now a no-op. ([#40](https://github.com/miyamo2/pqxd/pull/40))  
-  This deprecation has no impact on existing functionality.
-  pqxd now implements `driver.DriverContext`, so the `database/sql` package will automatically using the `driver.Connector` obtained by `pqxdDriver#OpenConnector` instead of calling `pqxdDriver.Open`.
+  This deprecation has no impact on existing functionality. pqxd now implements `driver.DriverContext`,
+  allowing `database/sql` to automatically use the `driver.Connector` from `pqxdDriver#OpenConnector`.
 
 ## 0.6.0 - 2025-09-23
 
