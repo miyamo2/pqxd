@@ -1,15 +1,15 @@
-## 0.7.0 - 2025-11-02
+## 0.7.0 - 2025-11-01
 
 ### 🐛 Fix
 
-- Fixed support for double-quoted column names in SELECT and RETURNING clauses (e.g., `SELECT "user-id", "order"` now works correctly).
-- Fixed an issue with next token handling in paginated queries that could cause incomplete result sets
-- Fixed DynamoDB client lifecycle management to prevent resource leaks and connection issues
-- Fixed support for optional whitespace before commas in column lists (e.g., `SELECT id , name` now works correctly)
+- Fixed support for double-quoted column names in SELECT and RETURNING clauses (e.g., `SELECT "user-id", "order"` now works correctly). ([#39](https://github.com/miyamo2/pqxd/pull/39))
+- Fixed an issue with next token handling in paginated queries that could cause incomplete result sets ([#45](https://github.com/miyamo2/pqxd/pull/45))
+- Fixed DynamoDB client lifecycle management to prevent resource leaks and connection issues ([#40](https://github.com/miyamo2/pqxd/pull/40))
+- Fixed support for optional whitespace before commas in column lists (e.g., `SELECT id , name` now works correctly) ([#44](https://github.com/miyamo2/pqxd/pull/44))
 
 ### ⚠️ Deprecations
 
-- `pqxdDriver.Open` has been deprecated and is now a no-op.  
+- `pqxdDriver.Open` has been deprecated and is now a no-op. ([#40](https://github.com/miyamo2/pqxd/pull/40))  
   This deprecation has no impact on existing functionality.
   pqxd now implements `driver.DriverContext`.
   If the driver implements `driver.DriverContext`, the `database/sql` package will automatically connect using the `driver.Connector` obtained by `driver.DriverContext#OpenConnector`, rather than the traditional `Open` method.
