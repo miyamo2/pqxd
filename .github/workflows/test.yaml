@@ -78,4 +78,5 @@ jobs:
           echo "AWS_REGION=ap-northeast-1" >> .env
           echo "AWS_ACCESS_KEY_ID=ABC1234567890" >> .env
           echo "AWS_SECRET_ACCESS_KEY=ABC1234567890" >> .env
+          go mod tidy
           go test -v -coverpkg='github.com/miyamo2/pqxd' -coverprofile=coverage.out
