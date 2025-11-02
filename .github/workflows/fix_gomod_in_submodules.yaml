@@ -32,6 +32,7 @@ jobs:
             dir=$(dirname "$file")
             echo $dir >> output.txt
           done
+          rm -f output.txt
           echo "::set-output name=TARGET_DIR::$(cat output.txt)"
 
       - name: go mod tidy in submodules
