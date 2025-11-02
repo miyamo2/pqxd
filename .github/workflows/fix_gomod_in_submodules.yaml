@@ -6,6 +6,8 @@ on:
       - "renovate/*"
     paths: ["go.mod", "go.sum"]
 
+permissions: write-all
+
 jobs:
   go-mod-fix:
     runs-on: ubuntu-latest
