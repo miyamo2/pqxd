@@ -32,7 +32,6 @@ jobs:
             dir=$(dirname "$file")
             echo $dir >> output.txt
           done
-          rm -f output.txt
           echo "::set-output name=TARGET_DIR::$(cat output.txt)"
 
       - name: go mod tidy in submodules
@@ -46,6 +45,7 @@ jobs:
               go mod tidy
               cd - || exit
           done
+          rm -f output.txt
 
       - name: commit go.mod and go.sum fixes
         if: steps.extract_go_mods.outputs.TARGET_DIR != ''
