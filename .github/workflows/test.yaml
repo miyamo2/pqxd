@@ -22,7 +22,7 @@ jobs:
         goversion: ["1.23.0"]
 
     steps:
-      - uses: Kesin11/actions-timeline@v2
+      - uses: Kesin11/actions-timeline@v3
 
       - uses: actions/checkout@v5
 
@@ -49,7 +49,7 @@ jobs:
           - "8000:8000"
 
     steps:
-      - uses: Kesin11/actions-timeline@v2
+      - uses: Kesin11/actions-timeline@v3
 
       - uses: actions/checkout@v5
 
